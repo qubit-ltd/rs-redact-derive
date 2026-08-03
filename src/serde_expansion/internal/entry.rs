@@ -61,7 +61,7 @@ pub(crate) fn expand(
     };
 
     let serialization_assertions =
-        serialization_assertions(&input.ident, model, runtime);
+        serialization_assertions(&input.ident, model, runtime, serde);
     let body = match model {
         ContainerData::Struct(fields) => struct_body(
             &input.ident,
@@ -120,6 +120,7 @@ pub(crate) fn expand(
 /// * `type_name` - Type receiving the hidden implementation.
 /// * `model` - Parsed struct or enum model.
 /// * `runtime` - Resolved path to the runtime crate.
+/// * `serde` - Resolved path to the direct Serde dependency.
 ///
 /// # Returns
 ///
@@ -128,11 +129,16 @@ fn serialization_assertions(
     type_name: &syn::Ident,
     model: &ContainerData<'_>,
     runtime: &Path,
+    serde: &Path,
 ) -> Vec<TokenStream> {
     match model {
-        ContainerData::Struct(fields) => {
-            fields_serialization_assertions(type_name, fields, None, runtime)
-        }
+        ContainerData::Struct(fields) => fields_serialization_assertions(
+            type_name,
+            fields,
+            None,
+            runtime,
+            serde,
+        ),
         ContainerData::Enum(variants) => variants
             .iter()
             .flat_map(|variant| {
@@ -141,6 +147,7 @@ fn serialization_assertions(
                     variant.fields(),
                     Some(variant),
                     runtime,
+                    serde,
                 )
             })
             .collect(),
@@ -164,6 +171,7 @@ fn fields_serialization_assertions(
     fields: &FieldsData<'_>,
     variant: Option<&VariantData<'_>>,
     runtime: &Path,
+    serde: &Path,
 ) -> Vec<TokenStream> {
     match fields {
         FieldsData::Named(fields) => fields
@@ -181,6 +189,8 @@ fn fields_serialization_assertions(
                     &context,
                     parsed.attributes().mode(),
                     runtime,
+                    serde,
+                    parsed.serde_attributes().serialize_with(),
                 )
             })
             .collect(),
@@ -199,6 +209,8 @@ fn fields_serialization_assertions(
                     &context,
                     parsed.attributes().mode(),
                     runtime,
+                    serde,
+                    parsed.serde_attributes().serialize_with(),
                 )
             })
             .collect(),

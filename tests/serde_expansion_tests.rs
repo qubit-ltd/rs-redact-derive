@@ -15,3 +15,9 @@ mod support;
 fn test_serde_expansion_excludes_raw_content() {
     support::assertions::assert_serde_expansion();
 }
+
+/// Verifies plain fields preserve supported Serde serialization adapters.
+#[test]
+fn test_serde_expansion_preserves_plain_field_adapters() {
+    support::assertions::assert_serde_adapter_expansion();
+}

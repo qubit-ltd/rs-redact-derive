@@ -81,6 +81,43 @@ enum SerializableEvent {
     Ready,
 }
 
+/// Plain field using a Serde serialization adapter.
+#[derive(Redact)]
+#[redact(serde)]
+struct SerdeAdapterRecord {
+    /// Field serialized through a module adapter.
+    #[redact(plain)]
+    #[serde(with = "serde_adapter")]
+    with_value: String,
+    /// Field serialized through a direct function adapter.
+    #[redact(plain)]
+    #[serde(serialize_with = "serde_adapter::serialize")]
+    function_value: String,
+}
+
+/// Serde adapter used to prove plain-field compatibility.
+mod serde_adapter {
+    use serde::Serializer;
+
+    /// Serializes one string with an observable adapter prefix.
+    pub fn serialize<S>(value: &str, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("adapted:{value}"))
+    }
+}
+
+/// Record exercising JSON redaction for formatting, mutation, and Serde.
+#[cfg(feature = "json")]
+#[derive(Redact, RedactMut)]
+#[redact(serde)]
+struct JsonRecord {
+    /// JSON text classified by object keys.
+    #[redact(json)]
+    document: String,
+}
+
 /// Verifies named-field parsing and immutable expansion.
 pub fn assert_named_redaction() {
     let value = NamedRecord {
@@ -183,6 +220,62 @@ pub fn assert_serde_expansion() {
         serde_json::to_value(SerializableEvent::Ready.redacted())
             .expect("redacted unit serialization succeeds"),
         serde_json::json!({"kind": "Ready"}),
+    );
+}
+
+/// Verifies plain-field Serde adapters remain active in redacted serialization.
+pub fn assert_serde_adapter_expansion() {
+    let value = SerdeAdapterRecord {
+        with_value: String::from("with"),
+        function_value: String::from("function"),
+    };
+    let json = serde_json::to_value(value.redacted())
+        .expect("plain field serde adapters should serialize");
+
+    assert_eq!(
+        json,
+        serde_json::json!({
+            "with_value": "adapted:with",
+            "function_value": "adapted:function",
+        }),
+    );
+}
+
+/// Verifies JSON redaction reaches every generated integration boundary.
+#[cfg(feature = "json")]
+pub fn assert_json_expansion() {
+    let policy = RedactionPolicy::builder()
+        .raise("password", Sensitivity::Secret)
+        .expect("the JSON policy field should be valid")
+        .build()
+        .expect("the JSON policy should build");
+    let raw = r#"{"password":"raw-password","name":"Ada"}"#;
+    let mut value = JsonRecord {
+        document: raw.to_owned(),
+    };
+
+    let formatted = format!("{:?}", value.redacted_with(&policy));
+    assert!(!formatted.contains("raw-password"));
+    assert!(formatted.contains("Ada"));
+
+    let serialized = serde_json::to_value(value.redacted_with(&policy))
+        .expect("JSON redacted view should serialize");
+    let serialized_text = serialized["document"]
+        .as_str()
+        .expect("JSON text should retain its outer string shape");
+    assert!(!serialized_text.contains("raw-password"));
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(serialized_text)
+            .expect("serialized JSON text should remain valid JSON")["name"],
+        "Ada",
+    );
+
+    value.redact_in_place_with(&policy);
+    assert!(!value.document.contains("raw-password"));
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&value.document)
+            .expect("mutated JSON text should remain valid JSON")["name"],
+        "Ada",
     );
 }
 

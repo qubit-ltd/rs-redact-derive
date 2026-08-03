@@ -27,6 +27,9 @@ publish = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+json = ["qubit-redact/json"]
+
 [lib]
 proc-macro = true
 test = false

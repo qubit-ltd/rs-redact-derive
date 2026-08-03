@@ -71,6 +71,7 @@ pub(super) fn serialization_condition(
 /// * `context` - Stable field context used in generated helper names.
 /// * `mode` - Validated redaction mode.
 /// * `runtime` - Resolved path to the runtime crate.
+/// * `serialize_with` - Optional adapter used by a plain field.
 /// * `raw` - Expression accessing the unredacted field value.
 ///
 /// # Returns
@@ -82,10 +83,22 @@ pub(super) fn serialized_carrier(
     context: &str,
     mode: &FieldMode,
     runtime: &Path,
+    serialize_with: Option<&Path>,
     raw: TokenStream,
 ) -> TokenStream {
     match mode {
-        FieldMode::Plain => raw,
+        FieldMode::Plain => match serialize_with {
+            Some(_path) => {
+                let helper = field_assertion::helper_name(
+                    type_name,
+                    field,
+                    context,
+                    "SerializeWith",
+                );
+                quote_spanned!(field.span()=> #helper(#raw))
+            }
+            None => raw,
+        },
         FieldMode::Level(sensitivity) => {
             let level = sensitivity.runtime_tokens(runtime);
             quote_spanned! {field.span()=>

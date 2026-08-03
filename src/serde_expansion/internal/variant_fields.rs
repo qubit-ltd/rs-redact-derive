@@ -108,6 +108,7 @@ pub(super) fn enum_named_parts(
             &context,
             parsed.attributes().mode(),
             runtime,
+            parsed.serde_attributes().serialize_with(),
             raw.clone(),
         );
         let condition = serialization_condition(parsed.serde_attributes(), raw);
@@ -201,6 +202,7 @@ pub(super) fn enum_unnamed_parts(
             &context,
             parsed.attributes().mode(),
             runtime,
+            parsed.serde_attributes().serialize_with(),
             raw.clone(),
         );
         let condition = serialization_condition(parsed.serde_attributes(), raw);

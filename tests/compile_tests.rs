@@ -16,5 +16,27 @@ fn test_pass_fixtures() {
 /// Verifies that invalid attributes produce stable targeted diagnostics.
 #[test]
 fn test_compile_fail_fixtures() {
-    trybuild::TestCases::new().compile_fail("tests/fixtures/fail/*.rs");
+    let mut fixtures = std::fs::read_dir("tests/fixtures/fail")
+        .expect("compile-fail fixture directory should exist")
+        .map(|entry| entry.expect("compile-fail fixture entry should exist").path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "rs"))
+        .filter(|_path| {
+            #[cfg(feature = "json")]
+            {
+                _path
+                    .file_name()
+                    .is_some_and(|name| name != "json_without_feature.rs")
+            }
+            #[cfg(not(feature = "json"))]
+            {
+                true
+            }
+        })
+        .collect::<Vec<_>>();
+    fixtures.sort();
+
+    let tests = trybuild::TestCases::new();
+    for fixture in fixtures {
+        tests.compile_fail(fixture);
+    }
 }

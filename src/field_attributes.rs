@@ -63,7 +63,7 @@ impl FieldAttributes {
                     type_name,
                     field_name,
                     "expected `#[redact(plain)]`, `#[redact(level = \"...\")]`, `#[redact(skip)]`, \
-                     `#[redact(nested)]`, or `#[redact(map)]`",
+                     `#[redact(nested)]`, `#[redact(map)]`, or `#[redact(json)]`",
                 ));
             };
             if list.tokens.is_empty() {
@@ -72,7 +72,7 @@ impl FieldAttributes {
                     type_name,
                     field_name,
                     "empty `#[redact()]` is not allowed; choose `plain`, `level = \"...\"`, `skip`, \
-                     `nested`, or `map`",
+                     `nested`, `map`, or `json`",
                 ));
             }
             attribute.parse_nested_meta(|meta| {

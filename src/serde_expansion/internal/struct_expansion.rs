@@ -139,6 +139,7 @@ fn named_struct_body(
             &context,
             parsed.attributes().mode(),
             runtime,
+            parsed.serde_attributes().serialize_with(),
             raw.clone(),
         );
         let condition = serialization_condition(parsed.serde_attributes(), raw);
@@ -223,6 +224,7 @@ fn newtype_struct_body(
         &context,
         parsed.attributes().mode(),
         runtime,
+        parsed.serde_attributes().serialize_with(),
         raw.clone(),
     );
     let condition = serialization_condition(parsed.serde_attributes(), raw);
@@ -281,6 +283,7 @@ fn tuple_struct_body(
             &context,
             parsed.attributes().mode(),
             runtime,
+            parsed.serde_attributes().serialize_with(),
             raw.clone(),
         );
         let condition = serialization_condition(parsed.serde_attributes(), raw);

@@ -72,6 +72,16 @@ struct UnsupportedControl {
 #[redact(serde)]
 struct InvalidTuple(#[serde] String);
 
+/// Serialization adapters cannot receive raw sensitive values.
+#[derive(Redact)]
+#[redact(serde)]
+struct SensitiveAdapter {
+    /// Sensitive field with an intentionally rejected adapter.
+    #[redact(level = "secret")]
+    #[serde(with = "adapter")]
+    value: String,
+}
+
 /// Rename controls require an assigned value.
 #[derive(Redact)]
 #[redact(serde)]

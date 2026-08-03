@@ -230,6 +230,8 @@ pub(crate) fn mutable(
 /// * `field_name` - Field name or positional index included in the helper name.
 /// * `mode` - Explicit redaction mode selecting the required capability.
 /// * `runtime` - Resolved path to the runtime crate.
+/// * `serde` - Resolved path to the direct Serde dependency.
+/// * `serialize_with` - Optional adapter used by a plain field.
 ///
 /// # Returns
 ///
@@ -241,13 +243,17 @@ pub(crate) fn serialization(
     field_name: &str,
     mode: &FieldMode,
     runtime: &Path,
+    serde: &Path,
+    serialize_with: Option<&Path>,
 ) -> TokenStream {
-    let helper = helper_name(
-        type_name,
-        field,
-        field_name,
-        mode.serialization_trait_name(),
-    );
+    let required_trait = if matches!(mode, FieldMode::Plain)
+        && serialize_with.is_some()
+    {
+        "SerializeWith"
+    } else {
+        mode.serialization_trait_name()
+    };
+    let helper = helper_name(type_name, field, field_name, required_trait);
     match mode {
         FieldMode::Nested => quote_spanned! {field.span()=>
             #[allow(non_snake_case)]
@@ -303,9 +309,41 @@ pub(crate) fn serialization(
                 }
             }
         },
-        FieldMode::Plain | FieldMode::Level(_) | FieldMode::Skip => {
-            TokenStream::new()
-        }
+        FieldMode::Plain => serialize_with.map_or_else(TokenStream::new, |path| {
+            let wrapper = format_ident!(
+                "{}_carrier",
+                helper,
+                span = field.span(),
+            );
+            let field_type = &field.ty;
+            quote_spanned! {field.span()=>
+                #[allow(non_camel_case_types)]
+                struct #wrapper<'a>(&'a #field_type);
+
+                impl<'a> #serde::Serialize for #wrapper<'a>
+                {
+                    fn serialize<__QubitRedactSerializer>(
+                        &self,
+                        serializer: __QubitRedactSerializer,
+                    ) -> ::core::result::Result<
+                        __QubitRedactSerializer::Ok,
+                        __QubitRedactSerializer::Error,
+                    >
+                    where
+                        __QubitRedactSerializer: #serde::Serializer,
+                    {
+                        #path(self.0, serializer)
+                    }
+                }
+
+                #[allow(non_snake_case)]
+                #[inline(always)]
+                fn #helper<'a>(value: &'a #field_type) -> #wrapper<'a> {
+                    #wrapper(value)
+                }
+            }
+        }),
+        FieldMode::Level(_) | FieldMode::Skip => TokenStream::new(),
     }
 }
 

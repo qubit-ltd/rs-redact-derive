@@ -32,6 +32,8 @@ pub(crate) struct SerdeAttributes {
     skip: bool,
     /// Predicate deciding whether the raw field is omitted.
     skip_serializing_if: Option<Path>,
+    /// Function used to serialize an explicitly plain field.
+    serialize_with: Option<Path>,
 }
 
 impl SerdeAttributes {
@@ -46,7 +48,8 @@ impl SerdeAttributes {
     ///
     /// # Returns
     ///
-    /// Parsed rename and skip controls, or empty controls when disabled.
+    /// Parsed rename, skip, and serialization-adapter controls, or empty
+    /// controls when disabled.
     ///
     /// # Errors
     ///
@@ -67,6 +70,7 @@ impl SerdeAttributes {
             rename_seen: false,
             skip: false,
             skip_serializing_if: None,
+            serialize_with: None,
         };
         if !enabled {
             return Ok(parsed);
@@ -117,6 +121,26 @@ impl SerdeAttributes {
                     }
                     let literal: LitStr = meta.value()?.parse()?;
                     parsed.skip_serializing_if = Some(literal.parse()?);
+                } else if meta.path.is_ident("with")
+                    || meta.path.is_ident("serialize_with")
+                {
+                    if parsed.serialize_with.is_some() {
+                        return Err(meta.error(format!(
+                            "Redact serde for `{type_name}` field `{field_name}` repeats a serialization adapter",
+                        )));
+                    }
+                    if !meta.input.peek(Token![=]) {
+                        return Err(meta.error(
+                            "Redact serde expects a string path for a serialization adapter",
+                        ));
+                    }
+                    let literal: LitStr = meta.value()?.parse()?;
+                    let path: Path = literal.parse()?;
+                    parsed.serialize_with = if meta.path.is_ident("with") {
+                        Some(syn::parse_quote!(#path::serialize))
+                    } else {
+                        Some(path)
+                    };
                 } else if is_deserialize_only_control(&meta) {
                     parse_deserialize_only_control(&meta)?;
                 } else {
@@ -130,7 +154,8 @@ impl SerdeAttributes {
                     return Err(meta.error(format!(
                         "Redact serde for `{type_name}` field `{field_name}` does not support \
                          `{key}` because it can change structure or bypass redaction; use only \
-                         `rename`, `skip`, `skip_serializing`, `skip_serializing_if`, or \
+                         `rename`, `skip`, `skip_serializing`, `skip_serializing_if`, \
+                         `with`, `serialize_with`, or \
                          deserialization-only controls such as `default`, `alias`, and \
                          `skip_deserializing`",
                     )));
@@ -172,6 +197,16 @@ impl SerdeAttributes {
                 ),
             ));
         }
+        if self.serialize_with.is_some()
+            && !matches!(mode, FieldMode::Plain | FieldMode::Skip)
+        {
+            return Err(syn::Error::new_spanned(
+                field,
+                format!(
+                    "Redact serde for `{type_name}` field `{field_name}` cannot use a serialization adapter with a redaction mode that observes raw field state; use it only with `plain` or `skip`",
+                ),
+            ));
+        }
         Ok(())
     }
 
@@ -206,6 +241,17 @@ impl SerdeAttributes {
     #[inline(always)]
     pub(crate) const fn skip_serializing_if(&self) -> Option<&Path> {
         self.skip_serializing_if.as_ref()
+    }
+
+    /// Returns the optional plain-field serialization adapter.
+    ///
+    /// # Returns
+    ///
+    /// `Some(path)` for `with` or `serialize_with`, or `None` when the field
+    /// uses ordinary Serde serialization.
+    #[inline(always)]
+    pub(crate) const fn serialize_with(&self) -> Option<&Path> {
+        self.serialize_with.as_ref()
     }
 }
 
