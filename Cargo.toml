@@ -42,7 +42,6 @@ syn = { version = "2", features = ["extra-traits", "full"] }
 qubit-redact = {
     git = "https://github.com/qubit-ltd/rs-redact",
     branch = "dev-starfish",
-    version = "0.6",
     default-features = false,
     features = ["serde"],
 }
