@@ -16,6 +16,7 @@ use syn::{
 
 use crate::{
     field_assertion,
+    generic_bounds,
     internal::{
         ContainerData,
         FieldsData,
@@ -77,9 +78,16 @@ pub(crate) fn expand(
             container_attributes,
         )?,
     };
+    let mut serialization_generics = input.generics.clone();
+    generic_bounds::add_serialization_bounds(
+        &mut serialization_generics,
+        model,
+        runtime,
+        serde,
+    );
     let name = &input.ident;
     let (impl_generics, type_generics, where_clause) =
-        input.generics.split_for_impl();
+        serialization_generics.split_for_impl();
 
     Ok(quote! {
         #runtime::__qubit_redact_serde! {

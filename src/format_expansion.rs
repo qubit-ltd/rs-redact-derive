@@ -11,6 +11,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{
     DeriveInput,
+    Generics,
     Path,
 };
 
@@ -23,6 +24,7 @@ use crate::container_attributes::ContainerAttributes;
 /// * `input` - Complete derive input whose generics are preserved.
 /// * `runtime` - Resolved path to the `qubit-redact` runtime crate.
 /// * `attributes` - Parsed container formatting controls.
+/// * `generics` - Input generics plus bounds required by the redaction impl.
 ///
 /// # Returns
 ///
@@ -32,10 +34,11 @@ pub(crate) fn expand(
     input: &DeriveInput,
     runtime: &Path,
     attributes: &ContainerAttributes,
+    generics: &Generics,
 ) -> TokenStream {
     let name = &input.ident;
     let (impl_generics, type_generics, where_clause) =
-        input.generics.split_for_impl();
+        generics.split_for_impl();
     let debug_impl = attributes.debug_enabled().then(|| {
         quote! {
             impl #impl_generics ::core::fmt::Debug for #name #type_generics #where_clause {

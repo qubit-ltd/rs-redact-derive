@@ -24,6 +24,7 @@ use crate::{
     field_assertion,
     field_mode::FieldMode,
     format_expansion,
+    generic_bounds,
     input_model,
     internal::{
         ContainerData,
@@ -78,6 +79,12 @@ pub(crate) fn expand(
         &serde_container_attributes,
         &model,
     )?;
+    let mut redaction_generics = input.generics.clone();
+    generic_bounds::add_immutable_bounds(
+        &mut redaction_generics,
+        &model,
+        runtime,
+    );
     let (immutable_assertions, format_body) = match &model {
         ContainerData::Struct(fields) => (
             immutable_assertions(&input.ident, fields, runtime),
@@ -88,11 +95,15 @@ pub(crate) fn expand(
             enum_format_body(&input.ident, variants, runtime),
         ),
     };
-    let format_impl =
-        format_expansion::expand(input, runtime, &container_attributes);
+    let format_impl = format_expansion::expand(
+        input,
+        runtime,
+        &container_attributes,
+        &redaction_generics,
+    );
     let name = &input.ident;
     let (impl_generics, type_generics, where_clause) =
-        input.generics.split_for_impl();
+        redaction_generics.split_for_impl();
 
     Ok(quote! {
         impl #impl_generics #runtime::Redact for #name #type_generics #where_clause {

@@ -23,6 +23,7 @@ use crate::{
     container_attributes::ContainerAttributes,
     field_assertion,
     field_mode::FieldMode,
+    generic_bounds,
     input_model,
     internal::{
         ContainerData,
@@ -47,7 +48,7 @@ use crate::{
 /// # Errors
 ///
 /// Returns a targeted syntax error when container or field controls are
-/// invalid, or when the input is an enum that is not yet supported.
+/// invalid, or when the input is an unsupported union.
 pub(crate) fn expand(
     input: &DeriveInput,
     runtime: &Path,
@@ -59,6 +60,12 @@ pub(crate) fn expand(
         false,
         container_attributes.require_explicit(),
     )?;
+    let mut redaction_generics = input.generics.clone();
+    generic_bounds::add_mutable_bounds(
+        &mut redaction_generics,
+        &model,
+        runtime,
+    );
     let (mutable_assertions, mutations) = match &model {
         ContainerData::Struct(fields) => (
             mutable_assertions(&input.ident, fields, runtime),
@@ -71,7 +78,7 @@ pub(crate) fn expand(
     };
     let name = &input.ident;
     let (impl_generics, type_generics, where_clause) =
-        input.generics.split_for_impl();
+        redaction_generics.split_for_impl();
 
     Ok(quote! {
         impl #impl_generics #runtime::RedactMut for #name #type_generics #where_clause {
