@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "checks": [
+    {
+      "name": "derive-all",
+      "commands": ["check", "test", "doc", "clippy"],
+      "allFeatures": true
+    }
+  ]
+}

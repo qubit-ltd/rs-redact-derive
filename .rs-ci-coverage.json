@@ -1,0 +1,8 @@
+{
+  "threshold_exempt_files": {
+    "qubit-redact-derive": [
+      "src/internal/crate_path.rs",
+      "src/internal/serde_directional_name.rs"
+    ]
+  }
+}
