@@ -63,7 +63,6 @@ dependencies = [
 [[package]]
 name = "qubit-redact"
 version = "0.6.0"
-source = "git+https://github.com/qubit-ltd/rs-redact?branch=dev-starfish#594b58dc5aa7866915d5e70d768819edbfc8203a"
 dependencies = [
  "serde",
 ]

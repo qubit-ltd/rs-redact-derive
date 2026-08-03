@@ -10,8 +10,7 @@ publish = false
 qubit-redact-derive = { path = "../../../.." }
 redaction-runtime = {
     package = "qubit-redact",
-    git = "https://github.com/qubit-ltd/rs-redact",
-    branch = "dev-starfish",
+    path = "../../../../../rs-redact",
     version = "0.6",
     default-features = false,
 }

@@ -8,8 +8,7 @@ publish = false
 
 [dependencies]
 qubit-redact = {
-    git = "https://github.com/qubit-ltd/rs-redact",
-    branch = "dev-starfish",
+    path = "../../../../../rs-redact",
     version = "0.6",
     features = ["serde"],
 }
