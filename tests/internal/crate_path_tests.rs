@@ -111,12 +111,11 @@ fn test_crate_path_resolve_wraps_lookup_error_with_context() {
     let result =
         crate_path::resolve(&input, Err(error), itself, "runtime lookup");
 
-    assert!(
-        result
-            .expect_err("failed lookup should produce a syntax error")
-            .to_string()
-            .starts_with("runtime lookup:"),
-    );
+    let error = match result {
+        Ok(_) => panic!("failed lookup should produce a syntax error"),
+        Err(error) => error,
+    };
+    assert!(error.to_string().starts_with("runtime lookup:"));
 }
 
 /// Verifies generated code resolves a renamed runtime dependency.

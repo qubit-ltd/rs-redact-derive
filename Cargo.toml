@@ -21,7 +21,6 @@ include = [
     "/src/**",
     "/doc/**",
     "/tests/**",
-    "/wip/**",
 ]
 publish = true
 
@@ -36,7 +35,7 @@ test = false
 proc-macro-crate = "3"
 proc-macro2 = "1"
 quote = "1"
-syn = { version = "2", features = ["extra-traits", "full"] }
+syn = "2"
 
 [dev-dependencies]
 qubit-redact = {
