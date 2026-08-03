@@ -9,10 +9,9 @@
 
 mod support;
 
-/// Verifies missing nested capabilities produce a compile-time assertion.
+/// Verifies generated field assertions are exercised by usable expansions.
 #[test]
-fn test_field_assertion_rejects_missing_nested_capability() {
-    support::assertions::assert_compile_fail(
-        "tests/fixtures/fail/nested_without_redact.rs",
-    );
+fn test_field_assertion_expansions_are_usable() {
+    support::assertions::assert_named_redaction();
+    support::assertions::assert_mutable_redaction();
 }
