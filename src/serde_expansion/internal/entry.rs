@@ -11,6 +11,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{
     DeriveInput,
+    Generics,
     Path,
 };
 
@@ -60,8 +61,17 @@ pub(crate) fn expand(
         return Ok(TokenStream::new());
     };
 
-    let serialization_assertions =
-        serialization_assertions(&input.ident, model, runtime, serde);
+    let serialization_assertions = serialization_assertions(
+        &input.ident,
+        model,
+        runtime,
+        serde,
+        &input.generics,
+    );
+    let serializer = generic_bounds::fresh_identifier(
+        &input.generics,
+        "__QubitRedactSerializer",
+    );
     let body = match model {
         ContainerData::Struct(fields) => struct_body(
             &input.ident,
@@ -76,6 +86,7 @@ pub(crate) fn expand(
             runtime,
             serde,
             container_attributes,
+            &serializer,
         )?,
     };
     let mut serialization_generics = input.generics.clone();
@@ -94,16 +105,16 @@ pub(crate) fn expand(
             impl #impl_generics #runtime::__private::RedactSerialize
                 for #name #type_generics #where_clause
             {
-                fn serialize_redacted<__QubitRedactSerializer>(
+                fn serialize_redacted<#serializer>(
                     &self,
                     policy: &#runtime::RedactionPolicy,
-                    serializer: __QubitRedactSerializer,
+                    serializer: #serializer,
                 ) -> ::core::result::Result<
-                    __QubitRedactSerializer::Ok,
-                    __QubitRedactSerializer::Error,
+                    #serializer::Ok,
+                    #serializer::Error,
                 >
                 where
-                    __QubitRedactSerializer: #serde::Serializer,
+                    #serializer: #serde::Serializer,
                 {
                     #(#serialization_assertions)*
                     #body
@@ -130,14 +141,11 @@ fn serialization_assertions(
     model: &ContainerData<'_>,
     runtime: &Path,
     serde: &Path,
+    generics: &Generics,
 ) -> Vec<TokenStream> {
     match model {
         ContainerData::Struct(fields) => fields_serialization_assertions(
-            type_name,
-            fields,
-            None,
-            runtime,
-            serde,
+            type_name, fields, None, runtime, serde, generics,
         ),
         ContainerData::Enum(variants) => variants
             .iter()
@@ -148,6 +156,7 @@ fn serialization_assertions(
                     Some(variant),
                     runtime,
                     serde,
+                    generics,
                 )
             })
             .collect(),
@@ -172,13 +181,19 @@ fn fields_serialization_assertions(
     variant: Option<&VariantData<'_>>,
     runtime: &Path,
     serde: &Path,
+    generics: &Generics,
 ) -> Vec<TokenStream> {
+    let context = field_assertion::SerializationContext {
+        runtime,
+        serde,
+        generics,
+    };
     match fields {
         FieldsData::Named(fields) => fields
             .iter()
             .map(|parsed| {
                 let field_name = parsed.identifier().to_string();
-                let context = field_context(
+                let field_context = field_context(
                     variant.map(|item| &item.variant().ident),
                     variant.map(VariantData::index),
                     &field_name,
@@ -186,11 +201,10 @@ fn fields_serialization_assertions(
                 field_assertion::serialization(
                     type_name,
                     parsed.field(),
-                    &context,
+                    &field_context,
                     parsed.attributes().mode(),
-                    runtime,
-                    serde,
                     parsed.serde_attributes().serialize_with(),
+                    &context,
                 )
             })
             .collect(),
@@ -198,7 +212,7 @@ fn fields_serialization_assertions(
             .iter()
             .map(|parsed| {
                 let field_name = parsed.index().index.to_string();
-                let context = field_context(
+                let field_context = field_context(
                     variant.map(|item| &item.variant().ident),
                     variant.map(VariantData::index),
                     &field_name,
@@ -206,11 +220,10 @@ fn fields_serialization_assertions(
                 field_assertion::serialization(
                     type_name,
                     parsed.field(),
-                    &context,
+                    &field_context,
                     parsed.attributes().mode(),
-                    runtime,
-                    serde,
                     parsed.serde_attributes().serialize_with(),
+                    &context,
                 )
             })
             .collect(),

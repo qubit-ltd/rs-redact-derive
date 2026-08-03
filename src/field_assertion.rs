@@ -14,13 +14,17 @@ use quote::{
 };
 use syn::{
     Field,
+    GenericParam,
+    Generics,
     Ident,
+    LifetimeParam,
     Path,
     spanned::Spanned,
 };
 
 use crate::{
     field_mode::FieldMode,
+    generic_bounds,
     immutable_trait_name::ImmutableTraitName,
 };
 
@@ -221,7 +225,21 @@ pub(crate) fn mutable(
     }
 }
 
+/// Shared paths and generic metadata for serialization assertions.
+pub(crate) struct SerializationContext<'a> {
+    /// Resolved path to the runtime crate.
+    pub(crate) runtime: &'a Path,
+    /// Resolved path to the direct Serde dependency.
+    pub(crate) serde: &'a Path,
+    /// Generics declared by the owning item.
+    pub(crate) generics: &'a Generics,
+}
+
 /// Generates the serialization capability assertion for one field.
+///
+/// The context groups paths and generic metadata shared by all fields in one
+/// generated implementation, keeping this field-level API small enough for
+/// strict Clippy configurations.
 ///
 /// # Parameters
 ///
@@ -229,9 +247,8 @@ pub(crate) fn mutable(
 /// * `field` - Source field supplying the diagnostic span.
 /// * `field_name` - Field name or positional index included in the helper name.
 /// * `mode` - Explicit redaction mode selecting the required capability.
-/// * `runtime` - Resolved path to the runtime crate.
-/// * `serde` - Resolved path to the direct Serde dependency.
 /// * `serialize_with` - Optional adapter used by a plain field.
+/// * `context` - Shared paths and generics for the owning item.
 ///
 /// # Returns
 ///
@@ -242,17 +259,18 @@ pub(crate) fn serialization(
     field: &Field,
     field_name: &str,
     mode: &FieldMode,
-    runtime: &Path,
-    serde: &Path,
     serialize_with: Option<&Path>,
+    context: &SerializationContext<'_>,
 ) -> TokenStream {
-    let required_trait = if matches!(mode, FieldMode::Plain)
-        && serialize_with.is_some()
-    {
-        "SerializeWith"
-    } else {
-        mode.serialization_trait_name()
-    };
+    let runtime = context.runtime;
+    let serde = context.serde;
+    let generics = context.generics;
+    let required_trait =
+        if matches!(mode, FieldMode::Plain) && serialize_with.is_some() {
+            "SerializeWith"
+        } else {
+            mode.serialization_trait_name()
+        };
     let helper = helper_name(type_name, field, field_name, required_trait);
     match mode {
         FieldMode::Nested => quote_spanned! {field.span()=>
@@ -316,21 +334,39 @@ pub(crate) fn serialization(
                 span = field.span(),
             );
             let field_type = &field.ty;
+            let carrier_lifetime = generic_bounds::fresh_lifetime(generics);
+            let mut carrier_generics =
+                generic_bounds::generics_for_field(generics, field_type);
+            carrier_generics.params.insert(
+                0,
+                GenericParam::Lifetime(LifetimeParam::new(
+                    carrier_lifetime.clone(),
+                )),
+            );
+            let serializer = generic_bounds::fresh_identifier(
+                &carrier_generics,
+                "__QubitRedactSerializer",
+            );
+            let carrier_params = &carrier_generics.params;
+            let (impl_generics, type_generics, where_clause) =
+                carrier_generics.split_for_impl();
             quote_spanned! {field.span()=>
                 #[allow(non_camel_case_types)]
-                struct #wrapper<'a>(&'a #field_type);
+                struct #wrapper<#carrier_params>(
+                    &#carrier_lifetime #field_type,
+                ) #where_clause;
 
-                impl<'a> #serde::Serialize for #wrapper<'a>
+                impl #impl_generics #serde::Serialize for #wrapper #type_generics #where_clause
                 {
-                    fn serialize<__QubitRedactSerializer>(
+                    fn serialize<#serializer>(
                         &self,
-                        serializer: __QubitRedactSerializer,
+                        serializer: #serializer,
                     ) -> ::core::result::Result<
-                        __QubitRedactSerializer::Ok,
-                        __QubitRedactSerializer::Error,
+                        #serializer::Ok,
+                        #serializer::Error,
                     >
                     where
-                        __QubitRedactSerializer: #serde::Serializer,
+                        #serializer: #serde::Serializer,
                     {
                         #path(self.0, serializer)
                     }
@@ -338,7 +374,9 @@ pub(crate) fn serialization(
 
                 #[allow(non_snake_case)]
                 #[inline(always)]
-                fn #helper<'a>(value: &'a #field_type) -> #wrapper<'a> {
+                fn #helper #impl_generics(
+                    value: &#carrier_lifetime #field_type,
+                ) -> #wrapper #type_generics {
                     #wrapper(value)
                 }
             }

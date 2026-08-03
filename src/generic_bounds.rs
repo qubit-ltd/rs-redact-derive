@@ -7,19 +7,27 @@
 // =============================================================================
 //! Generic capability bounds inferred from selected field modes.
 
+use std::collections::BTreeSet;
+
 use proc_macro2::{
     TokenStream,
     TokenTree,
 };
 use quote::{
     ToTokens,
+    format_ident,
     quote,
 };
+use syn::punctuated::Punctuated;
 use syn::{
     Field,
     GenericParam,
     Generics,
+    Ident,
+    Lifetime,
     Path,
+    Type,
+    WhereClause,
     WherePredicate,
     parse_quote,
 };
@@ -55,7 +63,7 @@ pub(crate) fn add_immutable_bounds(
     model: &ContainerData<'_>,
     runtime: &Path,
 ) {
-    for_each_field(model, &mut |field, mode| match mode {
+    for_each_field(model, &mut |field, mode, _serialize_with| match mode {
         FieldMode::Plain => {
             add_trait_bound(generics, field, quote!(::core::fmt::Debug));
         }
@@ -86,7 +94,7 @@ pub(crate) fn add_mutable_bounds(
     model: &ContainerData<'_>,
     runtime: &Path,
 ) {
-    for_each_field(model, &mut |field, mode| match mode {
+    for_each_field(model, &mut |field, mode, _serialize_with| match mode {
         FieldMode::Level(_) => {
             add_trait_bound(generics, field, quote!(#runtime::RedactValueMut));
         }
@@ -120,8 +128,8 @@ pub(crate) fn add_serialization_bounds(
     runtime: &Path,
     serde: &Path,
 ) {
-    for_each_field(model, &mut |field, mode| match mode {
-        FieldMode::Plain => {
+    for_each_field(model, &mut |field, mode, serialize_with| match mode {
+        FieldMode::Plain if serialize_with.is_none() => {
             add_trait_bound(generics, field, quote!(#serde::Serialize));
         }
         FieldMode::Level(_) => {
@@ -134,7 +142,10 @@ pub(crate) fn add_serialization_bounds(
                 quote!(#runtime::__private::RedactSerialize),
             );
         }
-        FieldMode::Skip | FieldMode::Map | FieldMode::Json => {}
+        FieldMode::Plain
+        | FieldMode::Skip
+        | FieldMode::Map
+        | FieldMode::Json => {}
     });
 }
 
@@ -142,7 +153,7 @@ pub(crate) fn add_serialization_bounds(
 /// each bound-inference caller.
 fn for_each_field(
     model: &ContainerData<'_>,
-    callback: &mut impl FnMut(&Field, &FieldMode),
+    callback: &mut impl FnMut(&Field, &FieldMode, Option<&Path>),
 ) {
     match model {
         ContainerData::Struct(fields) => for_each_fields(fields, callback),
@@ -157,17 +168,25 @@ fn for_each_field(
 /// Visits one parsed field collection.
 fn for_each_fields(
     fields: &FieldsData<'_>,
-    callback: &mut impl FnMut(&Field, &FieldMode),
+    callback: &mut impl FnMut(&Field, &FieldMode, Option<&Path>),
 ) {
     match fields {
         FieldsData::Named(fields) => {
             for field in fields {
-                callback(field.field(), field.attributes().mode());
+                callback(
+                    field.field(),
+                    field.attributes().mode(),
+                    field.serde_attributes().serialize_with(),
+                );
             }
         }
         FieldsData::Unnamed(fields) => {
             for field in fields {
-                callback(field.field(), field.attributes().mode());
+                callback(
+                    field.field(),
+                    field.attributes().mode(),
+                    field.serde_attributes().serialize_with(),
+                );
             }
         }
         FieldsData::Unit => {}
@@ -215,16 +234,158 @@ fn uses_type_parameter(
     token_stream_uses_parameter(field_type.to_token_stream(), &parameters)
 }
 
+/// Selects the input generic parameters referenced by one field type.
+///
+/// The returned generics retain only parameters and where predicates needed by
+/// the field. Generated local carrier items can therefore introduce their own
+/// generic parameters instead of capturing the surrounding impl's parameters.
+pub(crate) fn generics_for_field(
+    generics: &Generics,
+    field_type: &Type,
+) -> Generics {
+    let parameter_names = generic_parameter_names(generics);
+    let mut used = BTreeSet::new();
+    collect_parameter_names(
+        field_type.to_token_stream(),
+        &parameter_names,
+        &mut used,
+    );
+
+    loop {
+        let mut changed = false;
+        if let Some(where_clause) = &generics.where_clause {
+            for predicate in &where_clause.predicates {
+                let names = parameter_names_in(predicate, &parameter_names);
+                if names.iter().any(|name| used.contains(name)) {
+                    changed |=
+                        names.iter().any(|name| used.insert(name.clone()));
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+
+    let mut filtered = generics.clone();
+    filtered.params = generics
+        .params
+        .iter()
+        .filter(|parameter| used.contains(&generic_parameter_name(parameter)))
+        .cloned()
+        .collect();
+    filtered.where_clause = filtered.where_clause.and_then(|where_clause| {
+        let predicates: Punctuated<WherePredicate, syn::token::Comma> =
+            where_clause
+                .predicates
+                .into_iter()
+                .filter(|predicate| {
+                    let names = parameter_names_in(predicate, &parameter_names);
+                    names.iter().any(|name| used.contains(name))
+                })
+                .collect();
+        if predicates.is_empty() {
+            None
+        } else {
+            Some(WhereClause {
+                where_token: where_clause.where_token,
+                predicates,
+            })
+        }
+    });
+    filtered
+}
+
+/// Creates an identifier that cannot collide with an input generic parameter.
+#[must_use]
+pub(crate) fn fresh_identifier(generics: &Generics, base: &str) -> Ident {
+    let used = generic_parameter_names(generics);
+    if !used.contains(base) {
+        return format_ident!("{base}");
+    }
+    (0..)
+        .map(|index| format_ident!("{base}_{index}"))
+        .find(|candidate| !used.contains(&candidate.to_string()))
+        .expect("an unused generated identifier should always exist")
+}
+
+/// Creates a lifetime that cannot collide with an input generic lifetime.
+#[must_use]
+pub(crate) fn fresh_lifetime(generics: &Generics) -> Lifetime {
+    let used = generic_parameter_names(generics);
+    let base = "__qubit_redact_lifetime";
+    let name = if !used.contains(base) {
+        base.to_owned()
+    } else {
+        (0..)
+            .map(|index| format!("{base}_{index}"))
+            .find(|candidate| !used.contains(candidate))
+            .expect("an unused generated lifetime should always exist")
+    };
+    Lifetime::new(&format!("'{name}"), proc_macro2::Span::call_site())
+}
+
+/// Returns generic parameter names declared by one input.
+fn generic_parameter_names(generics: &Generics) -> BTreeSet<String> {
+    generics.params.iter().map(generic_parameter_name).collect()
+}
+
+/// Returns the textual name of one type, lifetime, or const parameter.
+fn generic_parameter_name(parameter: &GenericParam) -> String {
+    match parameter {
+        GenericParam::Type(parameter) => parameter.ident.to_string(),
+        GenericParam::Const(parameter) => parameter.ident.to_string(),
+        GenericParam::Lifetime(parameter) => {
+            parameter.lifetime.ident.to_string()
+        }
+    }
+}
+
+/// Returns generic names used by one token stream.
+fn parameter_names_in(
+    tokens: &impl ToTokens,
+    candidates: &BTreeSet<String>,
+) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    collect_parameter_names(tokens.to_token_stream(), candidates, &mut names);
+    names
+}
+
+/// Recursively collects candidate generic names from token groups.
+fn collect_parameter_names(
+    tokens: TokenStream,
+    candidates: &BTreeSet<String>,
+    names: &mut BTreeSet<String>,
+) {
+    for token in tokens {
+        match token {
+            TokenTree::Ident(identifier) => {
+                let name = identifier.to_string();
+                if candidates.contains(&name) {
+                    names.insert(name);
+                }
+            }
+            TokenTree::Group(group) => {
+                collect_parameter_names(group.stream(), candidates, names);
+            }
+            TokenTree::Punct(_) | TokenTree::Literal(_) => {}
+        }
+    }
+}
+
 /// Searches a field type's token stream for an input type parameter.
 fn token_stream_uses_parameter(
     tokens: TokenStream,
     parameters: &[String],
 ) -> bool {
-    tokens.into_iter().any(|token| {
-        let TokenTree::Ident(identifier) = token else {
-            return false;
-        };
-        let name = identifier.to_string();
-        parameters.iter().any(|parameter| parameter == &name)
+    tokens.into_iter().any(|token| match token {
+        TokenTree::Ident(identifier) => {
+            let name = identifier.to_string();
+            parameters.iter().any(|parameter| parameter == &name)
+        }
+        TokenTree::Group(group) => {
+            token_stream_uses_parameter(group.stream(), parameters)
+        }
+        TokenTree::Punct(_) | TokenTree::Literal(_) => false,
     })
 }

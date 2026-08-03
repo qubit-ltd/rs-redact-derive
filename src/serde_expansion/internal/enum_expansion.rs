@@ -9,6 +9,7 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::Ident;
 use syn::Path;
 
 use crate::{
@@ -51,12 +52,13 @@ pub(super) fn enum_body(
     runtime: &Path,
     serde: &Path,
     container_attributes: &SerdeContainerAttributes,
+    serializer: &Ident,
 ) -> syn::Result<TokenStream> {
     let arms = variants
         .iter()
         .map(|variant| {
             if variant.serde_attributes().skip() {
-                return Ok(skipped_variant_arm(variant, serde));
+                return Ok(skipped_variant_arm(variant, serde, serializer));
             }
             match container_attributes.representation() {
                 SerdeEnumRepresentation::ExternallyTagged => {
@@ -117,14 +119,18 @@ pub(super) fn enum_body(
 ///
 /// A match arm returning Serde's custom skipped-variant error.
 #[inline]
-fn skipped_variant_arm(variant: &VariantData<'_>, serde: &Path) -> TokenStream {
+fn skipped_variant_arm(
+    variant: &VariantData<'_>,
+    serde: &Path,
+    serializer: &Ident,
+) -> TokenStream {
     let variant_name = &variant.variant().ident;
     let pattern = wildcard_variant_pattern(variant);
     let message =
         format!("cannot serialize skipped redacted variant `{variant_name}`",);
     quote! {
         Self::#variant_name #pattern => ::core::result::Result::Err(
-            <__QubitRedactSerializer::Error as #serde::ser::Error>::custom(#message),
+            <#serializer::Error as #serde::ser::Error>::custom(#message),
         )
     }
 }
