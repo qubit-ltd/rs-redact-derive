@@ -13,9 +13,13 @@ use syn::{
     LitStr,
     Meta,
     Path,
+    Token,
 };
 
-use crate::internal::parse_serialize_name;
+use crate::{
+    field_mode::FieldMode,
+    internal::parse_serialize_name,
+};
 
 /// Serde controls that preserve the generated redacted structure.
 #[must_use]
@@ -113,6 +117,8 @@ impl SerdeAttributes {
                     }
                     let literal: LitStr = meta.value()?.parse()?;
                     parsed.skip_serializing_if = Some(literal.parse()?);
+                } else if is_deserialize_only_control(&meta) {
+                    parse_deserialize_only_control(&meta)?;
                 } else {
                     let key = meta
                         .path
@@ -124,13 +130,49 @@ impl SerdeAttributes {
                     return Err(meta.error(format!(
                         "Redact serde for `{type_name}` field `{field_name}` does not support \
                          `{key}` because it can change structure or bypass redaction; use only \
-                         `rename`, `skip`, `skip_serializing`, or `skip_serializing_if`",
+                         `rename`, `skip`, `skip_serializing`, `skip_serializing_if`, or \
+                         deserialization-only controls such as `default`, `alias`, and \
+                         `skip_deserializing`",
                     )));
                 }
                 Ok(())
             })?;
         }
         Ok(parsed)
+    }
+
+    /// Rejects raw-value omission predicates on redacted fields.
+    ///
+    /// # Parameters
+    ///
+    /// * `field` - Field carrying the relevant Serde attributes.
+    /// * `type_name` - Derived type used in the diagnostic.
+    /// * `field_name` - Field identifier used in the diagnostic.
+    /// * `mode` - Redaction mode selected for the field.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when a sensitive mode would expose raw field state to
+    /// `skip_serializing_if`. Plain fields intentionally retain their raw
+    /// representation and skipped fields emit no value, so both remain allowed.
+    pub(crate) fn validate_redaction_mode(
+        &self,
+        field: &Field,
+        type_name: &Ident,
+        field_name: &str,
+        mode: &FieldMode,
+    ) -> syn::Result<()> {
+        if self.skip_serializing_if.is_some()
+            && !matches!(mode, FieldMode::Plain | FieldMode::Skip)
+        {
+            return Err(syn::Error::new_spanned(
+                field,
+                format!(
+                    "Redact serde for `{type_name}` field `{field_name}` cannot use `skip_serializing_if` with a redaction mode that observes raw field state; use it only with `plain` or `skip`",
+                ),
+            ));
+        }
+        Ok(())
     }
 
     /// Returns the explicit serialized name, when present.
@@ -165,4 +207,43 @@ impl SerdeAttributes {
     pub(crate) const fn skip_serializing_if(&self) -> Option<&Path> {
         self.skip_serializing_if.as_ref()
     }
+}
+
+/// Returns whether one field control affects deserialization only.
+fn is_deserialize_only_control(meta: &syn::meta::ParseNestedMeta<'_>) -> bool {
+    meta.path.is_ident("default")
+        || meta.path.is_ident("alias")
+        || meta.path.is_ident("skip_deserializing")
+        || meta.path.is_ident("deserialize_with")
+        || meta.path.is_ident("deserialize_in_place")
+        || meta.path.is_ident("borrow")
+}
+
+/// Consumes one supported deserialization-only field control.
+fn parse_deserialize_only_control(
+    meta: &syn::meta::ParseNestedMeta<'_>,
+) -> syn::Result<()> {
+    if meta.path.is_ident("skip_deserializing")
+        || meta.path.is_ident("deserialize_in_place")
+    {
+        if meta.input.peek(Token![=]) || meta.input.peek(syn::token::Paren) {
+            return Err(
+                meta.error("Redact serde expects a bare deserialization-only field control")
+            );
+        }
+        return Ok(());
+    }
+    if meta.path.is_ident("default") && !meta.input.peek(Token![=]) {
+        return Ok(());
+    }
+    if meta.path.is_ident("borrow") && !meta.input.peek(Token![=]) {
+        return Ok(());
+    }
+    if !meta.input.peek(Token![=]) {
+        return Err(meta.error(
+            "Redact serde expects a string value for this deserialization-only field control",
+        ));
+    }
+    let _: LitStr = meta.value()?.parse()?;
+    Ok(())
 }

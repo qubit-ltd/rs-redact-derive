@@ -69,6 +69,12 @@ pub(crate) fn parse<'a>(
                 &field_name,
                 serde_enabled,
             )?;
+            serde_attributes.validate_redaction_mode(
+                field,
+                type_name,
+                &field_name,
+                attributes.mode(),
+            )?;
             Ok(NamedField::new(
                 field,
                 identifier,

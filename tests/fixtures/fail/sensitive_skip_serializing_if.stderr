@@ -1,0 +1,16 @@
+error: Redact serde for `SensitiveRecord` field `value` cannot use `skip_serializing_if` with a redaction mode that observes raw field state; use it only with `plain` or `skip`
+  --> tests/fixtures/fail/sensitive_skip_serializing_if.rs:16:5
+   |
+16 | /     /// Sensitive content whose presence must not reveal raw state.
+17 | |     #[redact(level = "secret")]
+18 | |     #[serde(skip_serializing_if = "String::is_empty")]
+19 | |     value: String,
+   | |_________________^
+
+error: Redact serde for `SensitiveTuple` field `0` cannot use `skip_serializing_if` with a redaction mode that observes raw field state; use it only with `plain` or `skip`
+  --> tests/fixtures/fail/sensitive_skip_serializing_if.rs:26:5
+   |
+26 | /     #[redact(level = "secret")]
+27 | |     #[serde(skip_serializing_if = "String::is_empty")]
+28 | |     String,
+   | |__________^

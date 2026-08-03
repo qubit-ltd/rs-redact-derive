@@ -116,7 +116,9 @@ enum DirectionalEnum {
     /// Variant-local directionality covers rename and named-field rules.
     #[serde(
         rename(serialize = "ready_output", deserialize = "readyInput"),
-        rename_all(serialize = "kebab-case", deserialize = "camelCase")
+        rename_all(serialize = "kebab-case", deserialize = "camelCase"),
+        alias = "legacy_ready",
+        skip_deserializing
     )]
     ReadyValue {
         /// Field name transformed by the serialization-side variant rule.

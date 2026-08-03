@@ -125,6 +125,17 @@ impl SerdeVariantAttributes {
                         )));
                     }
                     parsed.skip = true;
+                } else if meta.path.is_ident("alias") {
+                    let _: syn::LitStr = meta.value()?.parse()?;
+                } else if meta.path.is_ident("skip_deserializing") {
+                    if meta.input.peek(Token![=])
+                        || meta.input.peek(syn::token::Paren)
+                    {
+                        return Err(meta.error(format!(
+                            "Redact serde for `{type_name}` variant `{}` requires a bare deserialization-only control",
+                            variant.ident,
+                        )));
+                    }
                 } else {
                     let key = meta
                         .path
@@ -134,7 +145,7 @@ impl SerdeVariantAttributes {
                         .ident
                         .to_string();
                     return Err(meta.error(format!(
-                        "Redact serde for `{type_name}` variant `{}` does not support `{key}` because it can change value paths or bypass redaction; use only `rename`, `rename_all`, `skip`, or `skip_serializing`",
+                        "Redact serde for `{type_name}` variant `{}` does not support `{key}` because it can change value paths or bypass redaction; use only `rename`, `rename_all`, `skip`, `skip_serializing`, or deserialization-only controls such as `alias` and `skip_deserializing`",
                         variant.ident,
                     )));
                 }

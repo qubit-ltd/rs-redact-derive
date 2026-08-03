@@ -48,6 +48,15 @@ enum AssignedSkip {
     Value,
 }
 
+/// Variant `skip_deserializing` controls must be bare.
+#[derive(Redact)]
+#[redact(serde)]
+enum AssignedSkipDeserializing {
+    /// Invalid assigned deserialization-only control.
+    #[serde(skip_deserializing = true)]
+    Value,
+}
+
 /// Equivalent variant skip controls conflict.
 #[derive(Redact)]
 #[redact(serde)]

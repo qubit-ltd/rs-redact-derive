@@ -93,8 +93,26 @@ enum DuplicateUntagged {
 /// Structural container controls are outside the redacted allowlist.
 #[derive(Redact)]
 #[redact(serde)]
-#[serde(transparent)]
+#[serde(default = "make_default", transparent)]
 struct UnsupportedControl(String);
+
+/// Container `default` remains bare or string-valued, never parenthesized.
+#[derive(Redact)]
+#[redact(serde)]
+#[serde(default(factory))]
+struct ParenthesizedDefault {
+    /// Invalid default syntax.
+    value: String,
+}
+
+/// Container `deny_unknown_fields` remains a bare control.
+#[derive(Redact)]
+#[redact(serde)]
+#[serde(deny_unknown_fields = true)]
+struct AssignedDenyUnknownFields {
+    /// Invalid assigned control.
+    value: String,
+}
 
 /// Tags may be specified once.
 #[derive(Redact)]

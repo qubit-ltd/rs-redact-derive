@@ -190,6 +190,14 @@ impl<'input> SerdeContainerAttributeParser<'input> {
             self.parse_content(meta)
         } else if meta.path.is_ident("untagged") {
             self.parse_untagged(meta)
+        } else if meta.path.is_ident("default") {
+            parse_deserialize_only_default(&meta, &self.input.ident)
+        } else if meta.path.is_ident("deny_unknown_fields") {
+            require_bare_deserialize_only(
+                &meta,
+                &self.input.ident,
+                "deny_unknown_fields",
+            )
         } else {
             Err(self.unsupported_control_error(meta))
         }
@@ -333,10 +341,41 @@ impl<'input> SerdeContainerAttributeParser<'input> {
             .ident
             .to_string();
         meta.error(format!(
-            "Redact serde for `{}` does not support container `{key}` because it can change value paths or bypass redaction; use only `rename`, `rename_all`, `rename_all_fields`, `tag`, `content`, or `untagged`",
+            "Redact serde for `{}` does not support container `{key}` because it can change value paths or bypass redaction; use only `rename`, `rename_all`, `rename_all_fields`, `tag`, `content`, `untagged`, or deserialization-only controls such as `default` and `deny_unknown_fields`",
             self.input.ident,
         ))
     }
+}
+
+/// Parses a container `default` control that affects only deserialization.
+fn parse_deserialize_only_default(
+    meta: &syn::meta::ParseNestedMeta<'_>,
+    type_name: &Ident,
+) -> syn::Result<()> {
+    if meta.input.peek(Token![=]) {
+        let _: LitStr = meta.value()?.parse()?;
+        return Ok(());
+    }
+    if meta.input.peek(syn::token::Paren) {
+        return Err(meta.error(format!(
+            "Redact serde for `{type_name}` requires bare `default` or `default = \"...\"`"
+        )));
+    }
+    Ok(())
+}
+
+/// Parses one bare container control that affects only deserialization.
+fn require_bare_deserialize_only(
+    meta: &syn::meta::ParseNestedMeta<'_>,
+    type_name: &Ident,
+    name: &str,
+) -> syn::Result<()> {
+    if meta.input.peek(Token![=]) || meta.input.peek(syn::token::Paren) {
+        return Err(meta.error(format!(
+            "Redact serde for `{type_name}` requires bare `{name}`"
+        )));
+    }
+    Ok(())
 }
 
 /// Requires one Serde control to appear on an enum.
