@@ -97,6 +97,9 @@ fn main() {
 启用 `#[redact(serde)]` 后，`default`、`alias`、`skip_deserializing`、
 `deny_unknown_fields` 等仅影响反序列化的 Serde 属性会被接受，并在生成的序列化中忽略。
 可能绕过脱敏或改变序列化结构的属性仍会被拒绝。
+序列化适配器（`with` 和 `serialize_with`）只接受用于 `plain` 或 `skip` 字段。
+`plain` 字段的适配器会有意接收原始字段值；会观察原始状态的脱敏模式会拒绝适配器，
+避免绕过生成的脱敏逻辑。
 
 ## 依赖与 feature
 

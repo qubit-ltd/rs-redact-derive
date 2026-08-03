@@ -301,6 +301,7 @@ redacted representation:
 | --- | --- |
 | `rename`, `rename_all`, `rename_all_fields` | Applies the configured field and variant names. |
 | `skip`, `skip_serializing`, `skip_serializing_if` | Omits a field according to its serialization rule; `skip` and `skip_serializing` also omit an enum variant. |
+| `with`, `serialize_with` | Uses the adapter for a `plain` field; accepted on `skip` fields for compatibility but never called. |
 | `default`, `alias`, `skip_deserializing`, `deny_unknown_fields` | Accepted as deserialization-only controls and ignored by generated serialization. |
 | External tagging | Preserves the default enum wire shape. |
 | `tag` | Preserves internally tagged enum output. |
@@ -312,6 +313,10 @@ the runtime `serde` feature or when an unsupported Serde control is present.
 Do not combine `skip_serializing_if` with `level`, `nested`, `map`, or `json`:
 the predicate receives the raw field and can reveal sensitive state through
 field presence. Use it only with `plain` or `skip` fields.
+Serialization adapters (`with` and `serialize_with`) follow the same safety
+boundary: they are accepted only with `plain` or `skip`. A `plain` adapter
+receives the original field intentionally, while redaction modes that inspect
+raw state reject adapters.
 
 ## 7. Resolve dependencies and diagnose errors
 

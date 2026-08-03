@@ -284,6 +284,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | --- | --- |
 | `rename`、`rename_all`、`rename_all_fields` | 应用配置后的字段和 variant 名称。 |
 | `skip`、`skip_serializing`、`skip_serializing_if` | 按序列化规则省略字段；`skip` 和 `skip_serializing` 也可省略 enum variant。 |
+| `with`、`serialize_with` | 对 `plain` 字段使用适配器；为兼容性也接受于 `skip` 字段，但不会调用。 |
 | `default`、`alias`、`skip_deserializing`、`deny_unknown_fields` | 接受为仅影响反序列化的控制项，并在生成的序列化中忽略。 |
 | 外部标记 | 保留默认 enum wire 形态。 |
 | `tag` | 保留内部标记 enum 输出。 |
@@ -293,6 +294,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 未启用运行时 `serde` feature 或出现不支持的 Serde 控制项时，宏会给出定向错误。
 不要在 `level`、`nested`、`map` 或 `json` 字段上组合 `skip_serializing_if`：该谓词会接收原始字段，
 可能通过字段是否存在泄露敏感状态。它只支持 `plain` 和 `skip` 字段。
+序列化适配器（`with` 和 `serialize_with`）遵循相同的安全边界：只接受用于 `plain` 或 `skip`。
+`plain` 适配器会有意接收原始字段值；会观察原始状态的脱敏模式会拒绝适配器。
 
 ## 7. 解析依赖与排查错误
 

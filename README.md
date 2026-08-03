@@ -106,6 +106,10 @@ When `#[redact(serde)]` is enabled, deserialization-only Serde controls such as
 `default`, `alias`, `skip_deserializing`, and `deny_unknown_fields` are accepted
 and ignored by the generated serialization. Structural or serialization-side
 controls that could bypass redaction remain rejected.
+Serialization adapters (`with` and `serialize_with`) are accepted only on
+`plain` or `skip` fields. A plain adapter intentionally receives the original
+field value; redaction modes that inspect raw state reject adapters so they
+cannot bypass the generated redaction.
 
 ## Dependencies and Features
 
