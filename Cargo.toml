@@ -1,0 +1,51 @@
+[package]
+name = "qubit-redact-derive"
+version = "0.6.0"
+edition = "2024"
+rust-version = "1.94"
+authors = ["Haixing Hu <starfish.hu@gmail.com>"]
+license = "Apache-2.0"
+repository = "https://github.com/qubit-ltd/rs-redact-derive"
+homepage = "https://github.com/qubit-ltd/rs-redact-derive"
+documentation = "https://docs.rs/qubit-redact-derive"
+readme = "README.md"
+description = "Derive macros for qubit-redact domain-object formatting"
+keywords = ["redact", "mask", "privacy", "derive", "qubit"]
+categories = ["development-tools::procedural-macro-helpers"]
+include = [
+    "/Cargo.toml",
+    "/Cargo.lock",
+    "/LICENSE",
+    "/README.md",
+    "/README.zh_CN.md",
+    "/src/**",
+    "/doc/**",
+    "/tests/**",
+    "/wip/**",
+]
+publish = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[lib]
+proc-macro = true
+test = false
+
+[dependencies]
+proc-macro-crate = "3"
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["extra-traits", "full"] }
+
+[dev-dependencies]
+qubit-redact = {
+    git = "https://github.com/qubit-ltd/rs-redact",
+    branch = "dev-starfish",
+    version = "0.6",
+    default-features = false,
+    features = ["serde"],
+}
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+trybuild = "1"

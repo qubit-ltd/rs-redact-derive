@@ -1,0 +1,17 @@
+[package]
+name = "qubit-redact-serde-disabled-fixture"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+qubit-redact = {
+    git = "https://github.com/qubit-ltd/rs-redact",
+    branch = "dev-starfish",
+    version = "0.6",
+    default-features = false,
+}
+qubit-redact-derive = { path = "../../../.." }
+serde = "1"

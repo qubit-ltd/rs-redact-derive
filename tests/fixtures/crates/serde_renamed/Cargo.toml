@@ -1,0 +1,17 @@
+[package]
+name = "qubit-redact-serde-renamed-fixture"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+qubit-redact = {
+    git = "https://github.com/qubit-ltd/rs-redact",
+    branch = "dev-starfish",
+    version = "0.6",
+    features = ["serde"],
+}
+qubit-redact-derive = { path = "../../../.." }
+serialization = { package = "serde", version = "1" }
