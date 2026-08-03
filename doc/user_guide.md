@@ -301,6 +301,7 @@ redacted representation:
 | --- | --- |
 | `rename`, `rename_all`, `rename_all_fields` | Applies the configured field and variant names. |
 | `skip`, `skip_serializing`, `skip_serializing_if` | Omits a field according to its serialization rule; `skip` and `skip_serializing` also omit an enum variant. |
+| `default`, `alias`, `skip_deserializing`, `deny_unknown_fields` | Accepted as deserialization-only controls and ignored by generated serialization. |
 | External tagging | Preserves the default enum wire shape. |
 | `tag` | Preserves internally tagged enum output. |
 | `tag` with `content` | Preserves adjacently tagged enum output. |
@@ -308,6 +309,9 @@ redacted representation:
 
 The macro reports a targeted error when `#[redact(serde)]` is used without
 the runtime `serde` feature or when an unsupported Serde control is present.
+Do not combine `skip_serializing_if` with `level`, `nested`, `map`, or `json`:
+the predicate receives the raw field and can reveal sensitive state through
+field presence. Use it only with `plain` or `skip` fields.
 
 ## 7. Resolve dependencies and diagnose errors
 
@@ -345,6 +349,8 @@ runtime dependency: add it directly to the package that uses the derive.
   zeroization design when memory erasure is required.
 - Treat `#[redact(debug)]`, `#[redact(display)]`, and every default-policy
   call as process-wide policy decisions.
+- A `skip_serializing_if` predicate runs on the original field. Keep it on
+  `plain` or `skip` fields only; redacted modes reject it.
 
 Before publishing changes to derives or examples, run:
 

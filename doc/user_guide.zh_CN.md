@@ -284,12 +284,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | --- | --- |
 | `rename`、`rename_all`、`rename_all_fields` | 应用配置后的字段和 variant 名称。 |
 | `skip`、`skip_serializing`、`skip_serializing_if` | 按序列化规则省略字段；`skip` 和 `skip_serializing` 也可省略 enum variant。 |
+| `default`、`alias`、`skip_deserializing`、`deny_unknown_fields` | 接受为仅影响反序列化的控制项，并在生成的序列化中忽略。 |
 | 外部标记 | 保留默认 enum wire 形态。 |
 | `tag` | 保留内部标记 enum 输出。 |
 | `tag` 与 `content` | 保留相邻标记 enum 输出。 |
 | `untagged` | 保留无标记 enum 输出。 |
 
 未启用运行时 `serde` feature 或出现不支持的 Serde 控制项时，宏会给出定向错误。
+不要在 `level`、`nested`、`map` 或 `json` 字段上组合 `skip_serializing_if`：该谓词会接收原始字段，
+可能通过字段是否存在泄露敏感状态。它只支持 `plain` 和 `skip` 字段。
 
 ## 7. 解析依赖与排查错误
 
@@ -320,6 +323,7 @@ qubit-redact-derive = "0.6"
 - `skip` 从派生视图或序列化的脱敏输出中移除字段，但保留源对象。
 - `RedactMut` 只进行逻辑替换；需要内存擦除时请使用专用的 zeroization 设计。
 - `#[redact(debug)]`、`#[redact(display)]` 以及每一次默认策略调用都应视为进程级策略决策。
+- `skip_serializing_if` 谓词会在原始字段上运行，只应使用在 `plain` 或 `skip` 字段上；脱敏模式会拒绝它。
 
 发布 derive 或示例变更前，运行：
 

@@ -102,6 +102,11 @@ Unmarked fields use their ordinary `Debug` representation by default. They are
 neither masked nor recursively traversed. `require_explicit` changes only the
 derive invocation where it is written.
 
+When `#[redact(serde)]` is enabled, deserialization-only Serde controls such as
+`default`, `alias`, `skip_deserializing`, and `deny_unknown_fields` are accepted
+and ignored by the generated serialization. Structural or serialization-side
+controls that could bypass redaction remain rejected.
+
 ## Dependencies and Features
 
 The generated code requires `qubit-redact` to be a direct dependency. The
@@ -144,11 +149,14 @@ redacted JSON view, rewrites the string as compact redacted JSON for
   allocations, aliases, copies, or borrowed backing storage.
 - `debug` and `display` use the process-wide default policy. Use an
   explicit `redacted_with` boundary when a call site needs policy isolation.
+- Do not use `skip_serializing_if` with `level`, `nested`, `map`, or `json`; its
+  predicate receives the raw field and could reveal sensitive state through
+  field presence. It is supported only with `plain` and `skip` fields.
 
 ## Learn More
 
 - [English User Guide](doc/user_guide.md) and [中文用户手册](doc/user_guide.zh_CN.md)
-- [Runtime README](../README.md) and [runtime user guide](../doc/user_guide.md)
+- [Runtime README](https://github.com/qubit-ltd/rs-redact/blob/main/README.md) and [runtime user guide](https://github.com/qubit-ltd/rs-redact/blob/main/doc/user_guide.md)
 - [Runtime API documentation](https://docs.rs/qubit-redact)
 - [Derive API documentation](https://docs.rs/qubit-redact-derive)
 

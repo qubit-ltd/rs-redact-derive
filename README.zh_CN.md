@@ -94,6 +94,10 @@ fn main() {
 未标记字段默认使用其普通 `Debug` 表示，既不会被掩码，也不会被递归遍历。
 `require_explicit` 只改变写有该容器属性的 derive 调用。
 
+启用 `#[redact(serde)]` 后，`default`、`alias`、`skip_deserializing`、
+`deny_unknown_fields` 等仅影响反序列化的 Serde 属性会被接受，并在生成的序列化中忽略。
+可能绕过脱敏或改变序列化结构的属性仍会被拒绝。
+
 ## 依赖与 feature
 
 生成代码要求 `qubit-redact` 是直接依赖。派生 crate 会发现 Cargo 重命名，因此下列配置
@@ -128,11 +132,13 @@ serde_json = "1"
 - `RedactMut` 只做逻辑替换，不会擦除已释放的分配内存、别名、副本或借用后备存储。
 - `debug` 和 `display` 使用进程级默认策略；调用点需要策略隔离时，应显式使用
   `redacted_with` 边界。
+- 不要在 `level`、`nested`、`map` 或 `json` 字段上使用 `skip_serializing_if`；该谓词会接收
+  原始字段，可能通过字段是否存在泄露敏感状态。它只支持 `plain` 和 `skip` 字段。
 
 ## 深入了解
 
 - [English User Guide](doc/user_guide.md) 和[中文用户手册](doc/user_guide.zh_CN.md)
-- [运行时 README](../README.zh_CN.md) 和[运行时用户手册](../doc/user_guide.zh_CN.md)
+- [运行时 README](https://github.com/qubit-ltd/rs-redact/blob/main/README.zh_CN.md) 和[运行时用户手册](https://github.com/qubit-ltd/rs-redact/blob/main/doc/user_guide.zh_CN.md)
 - [运行时 API 文档](https://docs.rs/qubit-redact)
 - [derive API 文档](https://docs.rs/qubit-redact-derive)
 
