@@ -41,6 +41,8 @@ serde_json = "1"
 JSON 脱敏和 Serde 时，应同时启用两个 feature：
 `qubit-redact = { version = "0.6", features = ["serde", "json"] }`。
 
+派生 crate 的 `test-json` feature 仅用于自身测试，不会为下游 crate 启用运行时 feature。
+
 ## 核心概念
 
 `Redact` 和 `RedactMut` 既是宏名也是运行时 trait 名，应分别导入以明确边界：

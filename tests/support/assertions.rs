@@ -109,7 +109,7 @@ mod serde_adapter {
 }
 
 /// Record exercising JSON redaction for formatting, mutation, and Serde.
-#[cfg(feature = "json")]
+#[cfg(feature = "test-json")]
 #[derive(Redact, RedactMut)]
 #[redact(serde)]
 struct JsonRecord {
@@ -242,7 +242,7 @@ pub fn assert_serde_adapter_expansion() {
 }
 
 /// Verifies JSON redaction reaches every generated integration boundary.
-#[cfg(feature = "json")]
+#[cfg(feature = "test-json")]
 pub fn assert_json_expansion() {
     let policy = RedactionPolicy::builder()
         .raise("password", Sensitivity::Secret)

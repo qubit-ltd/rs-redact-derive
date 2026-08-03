@@ -138,6 +138,9 @@ redacted JSON view, rewrites the string as compact redacted JSON for
 `RedactMut`, and serializes as a JSON string when combined with
 `#[redact(serde)]`.
 
+The derive package's `test-json` feature is only for its own test suite; it
+does not enable runtime features for downstream crates.
+
 ## Safety Boundaries
 
 - The macros protect only the redacted view, generated formatting, or explicit

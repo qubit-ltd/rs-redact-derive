@@ -126,6 +126,8 @@ serde_json = "1"
 `#[redact(json)]` 需要运行时 crate 的 `json` feature。它为 `Redact` 格式化脱敏 JSON
 视图，为 `RedactMut` 将字符串改写为紧凑脱敏 JSON；与 `#[redact(serde)]` 组合时仍序列化为 JSON 字符串。
 
+派生 crate 的 `test-json` feature 仅用于自身测试，不会为下游 crate 启用运行时 feature。
+
 ## 安全边界
 
 - 宏只保护实际使用的脱敏视图、生成格式化或显式原地操作，无法保护无关的日志调用或序列化路径。

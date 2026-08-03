@@ -28,7 +28,7 @@ publish = true
 all-features = true
 
 [features]
-json = ["qubit-redact/json"]
+test-json = ["qubit-redact/json"]
 
 [lib]
 proc-macro = true

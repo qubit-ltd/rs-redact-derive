@@ -7,7 +7,7 @@
 // =============================================================================
 //! Black-box tests for generated JSON redaction integration.
 
-#![cfg(feature = "json")]
+#![cfg(feature = "test-json")]
 
 mod support;
 

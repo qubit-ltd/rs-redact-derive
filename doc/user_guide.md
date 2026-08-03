@@ -43,6 +43,9 @@ For `#[redact(json)]`, enable the runtime `json` feature as well. When a
 derive uses both JSON redaction and Serde, enable both features:
 `qubit-redact = { version = "0.6", features = ["serde", "json"] }`.
 
+The derive package's `test-json` feature is only for its own test suite; it
+does not enable runtime features for downstream crates.
+
 ## Core concepts
 
 `Redact` and `RedactMut` are both macro names and runtime trait names.
