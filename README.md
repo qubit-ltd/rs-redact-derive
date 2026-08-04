@@ -156,6 +156,9 @@ does not enable runtime features for downstream crates.
   allocations, aliases, copies, or borrowed backing storage.
 - `debug` and `display` use the process-wide default policy. Use an
   explicit `redacted_with` boundary when a call site needs policy isolation.
+  Redacted `Debug` output uses the policy diagnostic output budget by default.
+  Nested, map, and JSON fields share the same diagnostic session for one
+  redacted view, so they cannot independently reset that budget.
 - Do not use `skip_serializing_if` with `level`, `nested`, `map`, or `json`; its
   predicate receives the raw field and could reveal sensitive state through
   field presence. It is supported only with `plain` and `skip` fields.

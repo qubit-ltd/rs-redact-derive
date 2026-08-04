@@ -220,7 +220,9 @@ fn main() {
 ## 5. 生成 `Debug` 和 `Display`
 
 在 `Redact` derive 上，`#[redact(debug)]` 与 `#[redact(display)]` 会为原类型生成
-格式化实现。两者均通过当前进程级默认策略的快照格式化。
+格式化实现。两者均通过当前进程级默认策略的快照格式化；脱敏 `Debug` 默认使用该策略的
+诊断输出预算。同一个脱敏视图内的嵌套对象、Map 和 JSON 字段共享一个诊断 session，嵌套
+格式化不会重置预算。
 
 ```rust
 use qubit_redact_derive::Redact;
