@@ -22,6 +22,7 @@ mod redact_expansion;
 mod redact_mut_derive;
 mod redact_mut_expansion;
 mod runtime_path;
+mod serialization_context;
 mod sensitivity;
 mod serde_attributes;
 mod serde_container_attributes;
