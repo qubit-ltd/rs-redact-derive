@@ -23,6 +23,7 @@ use crate::{
         FieldsData,
         VariantData,
     },
+    serialization_context::SerializationContext,
     serde_container_attributes::SerdeContainerAttributes,
 };
 
@@ -183,7 +184,7 @@ fn fields_serialization_assertions(
     serde: &Path,
     generics: &Generics,
 ) -> Vec<TokenStream> {
-    let context = field_assertion::SerializationContext {
+    let context = SerializationContext {
         runtime,
         serde,
         generics,
