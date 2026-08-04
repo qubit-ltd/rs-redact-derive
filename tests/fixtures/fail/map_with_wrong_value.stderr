@@ -44,5 +44,5 @@ error[E0277]: the trait bound `u64: RedactValue` is not satisfied
              String
              str
    = note: required for `HashMap<String, u64>` to implement `RedactMapValue<String, u64>`
-   = note: required for `RedactedMap<'_, HashMap<String, u64>, String, u64>` to implement `Debug`
-   = note: required for the cast from `&RedactedMap<'_, HashMap<String, u64>, String, u64>` to `&dyn Debug`
+   = note: required for `RedactedMapSession<'_, '_, '_, HashMap<String, u64>, String, u64>` to implement `Debug`
+   = note: required for the cast from `&RedactedMapSession<'_, '_, '_, HashMap<String, u64>, String, u64>` to `&dyn Debug`

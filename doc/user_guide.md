@@ -237,6 +237,9 @@ clone and redact it. Neither operation is memory zeroization.
 On a `Redact` derive, `#[redact(debug)]` and `#[redact(display)]` generate
 formatting implementations for the original type. Both format through a
 snapshot of the current process-wide default policy.
+Redacted `Debug` output uses that policy's diagnostic output budget by default.
+Nested, map, and JSON fields reuse one diagnostic session for each redacted
+view, so nested formatting cannot reset the budget.
 
 ```rust
 use qubit_redact_derive::Redact;

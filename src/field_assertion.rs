@@ -61,9 +61,9 @@ pub(crate) fn immutable(
                 #[allow(non_snake_case)]
                 #[allow(clippy::ptr_arg)]
                 #[inline(always)]
-                fn #helper<'a, __QubitRedactField>(
+                fn #helper<'a, 's, 'p, __QubitRedactField>(
                     value: &'a __QubitRedactField,
-                    policy: &'a #runtime::RedactionPolicy,
+                    session: &'s #runtime::RedactionSession<'p>,
                 ) -> #runtime::RedactedValue<'a>
                 where
                     __QubitRedactField: #runtime::RedactValue + ?Sized,
@@ -71,7 +71,7 @@ pub(crate) fn immutable(
                     #runtime::RedactValue::redact_value(
                         value,
                         #level,
-                        policy.masking(),
+                        session.policy().masking(),
                     )
                 }
             }
@@ -79,14 +79,19 @@ pub(crate) fn immutable(
         FieldMode::Nested => quote_spanned! {field.span()=>
             #[allow(non_snake_case)]
             #[inline(always)]
-            fn #helper<'a, __QubitRedactField>(
+            fn #helper<'a, 's, 'p, __QubitRedactField>(
                 value: &'a __QubitRedactField,
-                policy: &#runtime::RedactionPolicy,
-            ) -> #runtime::Redacted<'a, __QubitRedactField>
+                session: &'s #runtime::RedactionSession<'p>,
+            ) -> #runtime::RedactedSessionView<
+                'a,
+                's,
+                'p,
+                __QubitRedactField,
+            >
             where
                 __QubitRedactField: #runtime::Redact,
             {
-                #runtime::Redact::redacted_with(value, policy)
+                #runtime::RedactedSessionView::new(value, session)
             }
         },
         FieldMode::Map => quote_spanned! {field.span()=>
@@ -94,14 +99,18 @@ pub(crate) fn immutable(
             #[inline(always)]
             fn #helper<
                 'a,
+                's,
+                'p,
                 __QubitRedactField,
                 __QubitRedactKey: ?Sized,
                 __QubitRedactValue: ?Sized,
             >(
                 value: &'a __QubitRedactField,
-                policy: &#runtime::RedactionPolicy,
-            ) -> #runtime::RedactedMap<
+                session: &'s #runtime::RedactionSession<'p>,
+            ) -> #runtime::RedactedMapSession<
                 'a,
+                's,
+                'p,
                 __QubitRedactField,
                 __QubitRedactKey,
                 __QubitRedactValue,
@@ -113,7 +122,7 @@ pub(crate) fn immutable(
                         __QubitRedactValue,
                     > + ?Sized,
             {
-                #runtime::RedactedMap::new(value, policy.clone())
+                #runtime::RedactedMapSession::new(value, session)
             }
         },
         FieldMode::Json => quote_spanned! {field.span()=>
@@ -121,11 +130,11 @@ pub(crate) fn immutable(
                 #[allow(non_snake_case)]
                 #[allow(clippy::ptr_arg)]
                 #[inline(always)]
-                fn #helper<'a>(
+                fn #helper<'a, 's, 'p>(
                     value: &'a ::std::string::String,
-                    policy: &'a #runtime::RedactionPolicy,
-                ) -> #runtime::RedactedJsonText<'a, 'a> {
-                    #runtime::RedactedJsonText::new(value, policy)
+                    session: &'s #runtime::RedactionSession<'p>,
+                ) -> #runtime::RedactedJsonTextSession<'a, 's, 'p> {
+                    #runtime::RedactedJsonTextSession::new(value, session)
                 }
             }
         },
@@ -328,28 +337,18 @@ pub(crate) fn serialization(
             }
         },
         FieldMode::Plain => serialize_with.map_or_else(TokenStream::new, |path| {
-            let wrapper = format_ident!(
-                "{}_carrier",
-                helper,
-                span = field.span(),
-            );
+            let wrapper = format_ident!("{}_carrier", helper, span = field.span(),);
             let field_type = &field.ty;
             let carrier_lifetime = generic_bounds::fresh_lifetime(generics);
-            let mut carrier_generics =
-                generic_bounds::generics_for_field(generics, field_type);
+            let mut carrier_generics = generic_bounds::generics_for_field(generics, field_type);
             carrier_generics.params.insert(
                 0,
-                GenericParam::Lifetime(LifetimeParam::new(
-                    carrier_lifetime.clone(),
-                )),
+                GenericParam::Lifetime(LifetimeParam::new(carrier_lifetime.clone())),
             );
-            let serializer = generic_bounds::fresh_identifier(
-                &carrier_generics,
-                "__QubitRedactSerializer",
-            );
+            let serializer =
+                generic_bounds::fresh_identifier(&carrier_generics, "__QubitRedactSerializer");
             let carrier_params = &carrier_generics.params;
-            let (impl_generics, type_generics, where_clause) =
-                carrier_generics.split_for_impl();
+            let (impl_generics, type_generics, where_clause) = carrier_generics.split_for_impl();
             quote_spanned! {field.span()=>
                 #[allow(non_camel_case_types)]
                 struct #wrapper<#carrier_params>(
