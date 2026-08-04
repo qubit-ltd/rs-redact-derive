@@ -32,5 +32,5 @@ error[E0271]: type mismatch resolving `<&Vec<String> as IntoIterator>::Item == (
    = note:  expected tuple `(&_, &_)`
            found reference `&String`
    = note: required for `Vec<String>` to implement `RedactMapValue<_, _>`
-   = note: required for `RedactedMap<'_, Vec<String>, _, _>` to implement `Debug`
-   = note: required for the cast from `&RedactedMap<'_, Vec<String>, _, _>` to `&dyn Debug`
+   = note: required for `RedactedMapSession<'_, '_, '_, Vec<String>, _, _>` to implement `Debug`
+   = note: required for the cast from `&RedactedMapSession<'_, '_, '_, Vec<String>, _, _>` to `&dyn Debug`

@@ -136,7 +136,8 @@ serde_json = "1"
 - `skip` 只从脱敏表示中省略值，不会擦除原始值。
 - `RedactMut` 只做逻辑替换，不会擦除已释放的分配内存、别名、副本或借用后备存储。
 - `debug` 和 `display` 使用进程级默认策略；调用点需要策略隔离时，应显式使用
-  `redacted_with` 边界。
+  `redacted_with` 边界。脱敏 `Debug` 默认使用策略的诊断输出预算；同一个脱敏视图内的
+  `nested`、`map` 和 `json` 字段共享一个诊断 session，不会分别重置预算。
 - 不要在 `level`、`nested`、`map` 或 `json` 字段上使用 `skip_serializing_if`；该谓词会接收
   原始字段，可能通过字段是否存在泄露敏感状态。它只支持 `plain` 和 `skip` 字段。
 
