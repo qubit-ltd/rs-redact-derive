@@ -109,10 +109,9 @@ pub(crate) fn expand(
         impl #impl_generics #runtime::Redact for #name #type_generics #where_clause {
             fn fmt_redacted(
                 &self,
-                policy: &#runtime::RedactionPolicy,
+                session: &#runtime::RedactionSession<'_>,
                 formatter: &mut ::core::fmt::Formatter<'_>,
             ) -> ::core::fmt::Result {
-                let _ = policy;
                 #(#immutable_assertions)*
                 #format_body
             }
@@ -230,7 +229,7 @@ fn named_format_body(
                     immutable_trait_name(attributes.mode()),
                 );
                 quote_spanned! {field.span()=>
-                    .field(#field_name, &#helper(&self.#identifier, policy))
+                    .field(#field_name, &#helper(&self.#identifier, session))
                 }
             }
             FieldMode::Json => {
@@ -243,7 +242,7 @@ fn named_format_body(
                 quote_spanned! {field.span()=>
                     .field(
                         #field_name,
-                        &#runtime::__qubit_redact_json!(#helper(&self.#identifier, policy)),
+                        &#runtime::__qubit_redact_json!(#helper(&self.#identifier, session)),
                     )
                 }
             }
@@ -290,7 +289,7 @@ fn unnamed_format_body(
                     immutable_trait_name(attributes.mode()),
                 );
                 quote_spanned! {field.span()=>
-                    .field(&#helper(&self.#index, policy))
+                    .field(&#helper(&self.#index, session))
                 }
             }
             FieldMode::Json => {
@@ -302,7 +301,7 @@ fn unnamed_format_body(
                 );
                 quote_spanned! {field.span()=>
                     .field(
-                        &#runtime::__qubit_redact_json!(#helper(&self.#index, policy)),
+                        &#runtime::__qubit_redact_json!(#helper(&self.#index, session)),
                     )
                 }
             }
@@ -418,22 +417,10 @@ fn enum_format_body(
         let variant_name = &variant.variant().ident;
         match variant.fields() {
             FieldsData::Named(fields) => {
-                enum_named_format_arm(
-                    type_name,
-                    variant.index(),
-                    variant_name,
-                    fields,
-                    runtime,
-                )
+                enum_named_format_arm(type_name, variant.index(), variant_name, fields, runtime)
             }
             FieldsData::Unnamed(fields) => {
-                enum_unnamed_format_arm(
-                    type_name,
-                    variant.index(),
-                    variant_name,
-                    fields,
-                    runtime,
-                )
+                enum_unnamed_format_arm(type_name, variant.index(), variant_name, fields, runtime)
             }
             FieldsData::Unit => quote! {
                 Self::#variant_name => formatter.write_str(stringify!(#variant_name)),
@@ -484,8 +471,7 @@ fn enum_named_format_arm(
                 .field(#field_name, #identifier)
             },
             FieldMode::Level(_) | FieldMode::Nested | FieldMode::Map => {
-                let context =
-                    variant_field_context(variant_index, variant_name, &field_name);
+                let context = variant_field_context(variant_index, variant_name, &field_name);
                 let helper = field_assertion::helper_name(
                     type_name,
                     field,
@@ -493,12 +479,11 @@ fn enum_named_format_arm(
                     immutable_trait_name(mode),
                 );
                 quote_spanned! {field.span()=>
-                    .field(#field_name, &#helper(#identifier, policy))
+                    .field(#field_name, &#helper(#identifier, session))
                 }
             }
             FieldMode::Json => {
-                let context =
-                    variant_field_context(variant_index, variant_name, &field_name);
+                let context = variant_field_context(variant_index, variant_name, &field_name);
                 let helper = field_assertion::helper_name(
                     type_name,
                     field,
@@ -508,7 +493,7 @@ fn enum_named_format_arm(
                 quote_spanned! {field.span()=>
                     .field(
                         #field_name,
-                        &#runtime::__qubit_redact_json!(#helper(#identifier, policy)),
+                        &#runtime::__qubit_redact_json!(#helper(#identifier, session)),
                     )
                 }
             }
@@ -568,8 +553,7 @@ fn enum_unnamed_format_arm(
             },
             FieldMode::Level(_) | FieldMode::Nested | FieldMode::Map => {
                 let field_name = parsed.index().index.to_string();
-                let context =
-                    variant_field_context(variant_index, variant_name, &field_name);
+                let context = variant_field_context(variant_index, variant_name, &field_name);
                 let helper = field_assertion::helper_name(
                     type_name,
                     field,
@@ -577,13 +561,12 @@ fn enum_unnamed_format_arm(
                     immutable_trait_name(mode),
                 );
                 quote_spanned! {field.span()=>
-                    .field(&#helper(#binding, policy))
+                    .field(&#helper(#binding, session))
                 }
             }
             FieldMode::Json => {
                 let field_name = parsed.index().index.to_string();
-                let context =
-                    variant_field_context(variant_index, variant_name, &field_name);
+                let context = variant_field_context(variant_index, variant_name, &field_name);
                 let helper = field_assertion::helper_name(
                     type_name,
                     field,
@@ -592,7 +575,7 @@ fn enum_unnamed_format_arm(
                 );
                 quote_spanned! {field.span()=>
                     .field(
-                        &#runtime::__qubit_redact_json!(#helper(#binding, policy)),
+                        &#runtime::__qubit_redact_json!(#helper(#binding, session)),
                     )
                 }
             }
