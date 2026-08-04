@@ -15,7 +15,6 @@ use quote::{
 use syn::{
     Field,
     GenericParam,
-    Generics,
     Ident,
     LifetimeParam,
     Path,
@@ -234,16 +233,6 @@ pub(crate) fn mutable(
     }
 }
 
-/// Shared paths and generic metadata for serialization assertions.
-pub(crate) struct SerializationContext<'a> {
-    /// Resolved path to the runtime crate.
-    pub(crate) runtime: &'a Path,
-    /// Resolved path to the direct Serde dependency.
-    pub(crate) serde: &'a Path,
-    /// Generics declared by the owning item.
-    pub(crate) generics: &'a Generics,
-}
-
 /// Generates the serialization capability assertion for one field.
 ///
 /// The context groups paths and generic metadata shared by all fields in one
@@ -269,7 +258,7 @@ pub(crate) fn serialization(
     field_name: &str,
     mode: &FieldMode,
     serialize_with: Option<&Path>,
-    context: &SerializationContext<'_>,
+    context: &crate::serialization_context::SerializationContext<'_>,
 ) -> TokenStream {
     let runtime = context.runtime;
     let serde = context.serde;
