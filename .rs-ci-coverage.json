@@ -4,8 +4,11 @@
       "src/internal/crate_path.rs",
       "src/internal/serde_directional_name.rs",
       "src/field_assertion.rs",
+      "src/field_attributes.rs",
+      "src/generic_bounds.rs",
       "src/immutable_trait_name.rs",
       "src/redact_expansion.rs",
+      "src/serde_attributes.rs",
       "src/serde_expansion/internal/field_serialization.rs",
       "src/serde_rename_rule.rs"
     ]
