@@ -23,8 +23,8 @@ use crate::{
         FieldsData,
         VariantData,
     },
-    serialization_context::SerializationContext,
     serde_container_attributes::SerdeContainerAttributes,
+    serialization_context::SerializationContext,
 };
 
 use super::{

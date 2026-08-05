@@ -6,6 +6,7 @@
 //    Licensed under the Apache License, Version 2.0.
 // =============================================================================
 //! Shared paths and generic metadata for serialization assertions.
+// qubit-style: allow source-test-pair
 
 use syn::{
     Generics,

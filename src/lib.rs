@@ -22,7 +22,6 @@ mod redact_expansion;
 mod redact_mut_derive;
 mod redact_mut_expansion;
 mod runtime_path;
-mod serialization_context;
 mod sensitivity;
 mod serde_attributes;
 mod serde_container_attributes;
@@ -31,6 +30,7 @@ mod serde_expansion;
 mod serde_path;
 mod serde_rename_rule;
 mod serde_variant_attributes;
+mod serialization_context;
 mod unnamed_fields;
 
 use proc_macro::TokenStream;
