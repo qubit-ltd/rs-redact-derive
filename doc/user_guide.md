@@ -158,6 +158,13 @@ Do not expect unmarked fields to be discovered or recursively inspected. If a
 field contains a domain object, use `nested`; if it is a supported text-keyed
 map, use `map`.
 
+The downstream application owns field sensitivity classification. This derive
+cannot infer whether a field is sensitive in a particular domain, so it
+intentionally does not require every field to be annotated. Mark fields that
+cross the application's redaction boundary, and use `plain` only for ordinary
+visibility that has been intentionally reviewed. Use `require_explicit` when a
+domain model's review policy requires every field to make that choice.
+
 `json` is intended for fields whose outer Rust type is `String`. It redacts
 object members by key and keeps the field as a JSON string; it does not turn
 the field into a `serde_json::Value`. Invalid JSON is replaced by the policy's

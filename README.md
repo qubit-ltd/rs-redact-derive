@@ -102,6 +102,14 @@ Unmarked fields use their ordinary `Debug` representation by default. They are
 neither masked nor recursively traversed. `require_explicit` changes only the
 derive invocation where it is written.
 
+Field sensitivity classification belongs to the downstream application and its
+domain-model owners. This derive cannot determine whether a field is sensitive
+in a particular product, so it intentionally does not require every field to
+carry an attribute. Applications should mark the fields that cross their
+redaction boundary and choose `plain` only when ordinary visibility is an
+intentional, reviewed decision. `require_explicit` is available for models
+whose review policy requires every field to make that choice.
+
 When `#[redact(serde)]` is enabled, deserialization-only Serde controls such as
 `default`, `alias`, `skip_deserializing`, and `deny_unknown_fields` are accepted
 and ignored by the generated serialization. Structural or serialization-side
