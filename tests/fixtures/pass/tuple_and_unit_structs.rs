@@ -7,17 +7,17 @@
 // =============================================================================
 //! Compile-pass fixture for tuple and unit structs.
 
-use qubit_redact_derive::{Redact, RedactMut};
+use qubit_redact_derive::Redact;
 
 /// Tuple fields support redaction controls by position.
-#[derive(Redact, RedactMut)]
+#[derive(Redact)]
 struct Pair(
     #[redact(level = "secret")] String,
     #[redact(skip)] String,
 );
 
 /// Unit structs generate no-op redaction implementations.
-#[derive(Redact, RedactMut)]
+#[derive(Redact)]
 struct Marker;
 
 /// Keeps the supported types reachable.

@@ -19,7 +19,6 @@ use qubit_redact::{
 };
 use qubit_redact_derive::{
     Redact,
-    RedactMut,
 };
 
 /// Named record covering plain, sensitive, skipped, and map fields.
@@ -58,7 +57,7 @@ enum Event {
 }
 
 /// Mutable tuple used by destructive expansion assertions.
-#[derive(RedactMut)]
+#[derive(Redact)]
 struct MutableRecord(#[redact(level = "secret")] String);
 
 /// Type receiving generated formatting traits.
@@ -71,7 +70,7 @@ struct FormattedRecord {
 }
 
 /// Serializable adjacently tagged enum.
-#[derive(Redact, serde::Serialize)]
+#[derive(Redact)]
 #[redact(serde)]
 #[serde(tag = "kind", content = "payload")]
 enum SerializableEvent {
@@ -110,7 +109,7 @@ mod serde_adapter {
 
 /// Record exercising JSON redaction for formatting, mutation, and Serde.
 #[cfg(feature = "test-json")]
-#[derive(Redact, RedactMut)]
+#[derive(Redact)]
 #[redact(serde)]
 struct JsonRecord {
     /// JSON text classified by object keys.

@@ -10,10 +10,10 @@
 use std::collections::HashMap;
 
 use qubit_redact::RedactMut as RedactMutTrait;
-use qubit_redact_derive::RedactMut;
+use qubit_redact_derive::Redact;
 
 /// Owned fields supported by destructive redaction.
-#[derive(RedactMut)]
+#[derive(Redact)]
 struct Account {
     /// Explicitly sensitive text.
     #[redact(level = "secret")]

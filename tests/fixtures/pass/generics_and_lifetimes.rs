@@ -10,13 +10,13 @@
 use std::fmt::Debug;
 
 use qubit_redact::{Redact as RedactTrait, RedactMut as RedactMutTrait};
-use qubit_redact_derive::{Redact, RedactMut};
+use qubit_redact_derive::Redact;
 
 /// Marker with no formatting or redaction capabilities.
 struct NoTraits;
 
 /// Generic record preserving every user-supplied generic and where clause.
-#[derive(Redact, RedactMut)]
+#[derive(Redact)]
 struct GenericRecord<'a, T, const N: usize>
 where
     T: Debug,

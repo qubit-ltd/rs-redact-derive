@@ -7,10 +7,7 @@
 // =============================================================================
 //! Fixture proving both derives require the runtime dependency.
 
-use qubit_redact_derive::{
-    Redact,
-    RedactMut,
-};
+use qubit_redact_derive::Redact;
 
 /// Immutable derive without the required runtime.
 #[derive(Redact)]
@@ -19,8 +16,8 @@ struct Immutable {
     value: String,
 }
 
-/// Mutable derive without the required runtime.
-#[derive(RedactMut)]
+/// A second unified derive invocation keeps both lookup paths observable.
+#[derive(Redact)]
 struct Mutable {
     /// Owned value.
     value: String,

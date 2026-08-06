@@ -11,13 +11,10 @@ use qubit_redact::{
     Redact as _,
     RedactMut as _,
 };
-use qubit_redact_derive::{
-    Redact,
-    RedactMut,
-};
+use qubit_redact_derive::Redact;
 
 /// Generic fields receive only the bounds required by their selected modes.
-#[derive(Redact, RedactMut)]
+#[derive(Redact)]
 #[redact(serde)]
 struct GenericRecord<T> {
     /// A plain field requiring ordinary formatting and serialization.

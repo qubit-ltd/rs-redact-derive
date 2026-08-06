@@ -45,8 +45,10 @@ use super::{
 ///
 /// # Returns
 ///
-/// A `RedactSerialize` implementation when integration is enabled, or an
-/// empty token stream otherwise.
+/// A `RedactSerialize` implementation and a direct redacted `Serialize`
+/// implementation when integration is enabled, or an empty token stream
+/// otherwise. Direct serialization uses the default policy snapshot, while
+/// the borrowed view continues to carry an explicit policy when requested.
 ///
 /// # Errors
 ///
@@ -119,6 +121,28 @@ pub(crate) fn expand(
                 {
                     #(#serialization_assertions)*
                     #body
+                }
+            }
+
+            impl #impl_generics #serde::Serialize
+                for #name #type_generics #where_clause
+            {
+                fn serialize<#serializer>(
+                    &self,
+                    serializer: #serializer,
+                ) -> ::core::result::Result<
+                    #serializer::Ok,
+                    #serializer::Error,
+                >
+                where
+                    #serializer: #serde::Serializer,
+                {
+                    let policy = #runtime::RedactionPolicy::default();
+                    <Self as #runtime::__private::RedactSerialize>::serialize_redacted(
+                        self,
+                        &policy,
+                        serializer,
+                    )
                 }
             }
         }

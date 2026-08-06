@@ -19,7 +19,6 @@ mod internal;
 mod named_fields;
 mod redact_derive;
 mod redact_expansion;
-mod redact_mut_derive;
 mod redact_mut_expansion;
 mod runtime_path;
 mod sensitivity;
@@ -53,28 +52,12 @@ use proc_macro::TokenStream;
 ///
 /// # Returns
 ///
-/// An implementation of `qubit_redact::Redact`, or a targeted compile error
-/// when the input is a union, an attribute is unsafe or malformed, or the
-/// runtime crate cannot be resolved.
+/// Implementations of `qubit_redact::Redact` and, unless disabled by
+/// `#[redact(no_mut)]`, `qubit_redact::RedactMut`, plus any requested optional
+/// formatting or serialization implementations. Invalid input produces a
+/// targeted compile error.
 #[proc_macro_derive(Redact, attributes(redact, serde))]
 #[inline(always)]
 pub fn derive_redact(input: TokenStream) -> TokenStream {
     redact_derive::derive(input)
-}
-
-/// Derives explicit logical in-place redaction for owned fields of a struct or
-/// enum.
-///
-/// # Parameters
-///
-/// * `input` - Rust item annotated with `#[derive(RedactMut)]`.
-///
-/// # Returns
-///
-/// An implementation of `qubit_redact::RedactMut`, or a targeted compile
-/// error for unsupported input or field capabilities.
-#[proc_macro_derive(RedactMut, attributes(redact, serde))]
-#[inline(always)]
-pub fn derive_redact_mut(input: TokenStream) -> TokenStream {
-    redact_mut_derive::derive(input)
 }

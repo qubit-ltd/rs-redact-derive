@@ -5,7 +5,7 @@
 //
 //    Licensed under the Apache License, Version 2.0.
 // =============================================================================
-//! Immutable `Redact` implementation generation.
+//! Combined immutable and mutable `Redact` implementation generation.
 
 use proc_macro2::TokenStream;
 use quote::{
@@ -47,7 +47,8 @@ use crate::{
 ///
 /// # Returns
 ///
-/// Generated immutable redaction and optional serde implementation tokens.
+/// Generated immutable redaction, optional mutable redaction, and optional
+/// formatting or serde implementation tokens.
 ///
 /// # Errors
 ///
@@ -101,6 +102,11 @@ pub(crate) fn expand(
         &container_attributes,
         &redaction_generics,
     );
+    let mutable_impl = if container_attributes.mutable_disabled() {
+        TokenStream::new()
+    } else {
+        crate::redact_mut_expansion::expand(input, runtime, &model)?
+    };
     let name = &input.ident;
     let (impl_generics, type_generics, where_clause) =
         redaction_generics.split_for_impl();
@@ -118,6 +124,7 @@ pub(crate) fn expand(
         }
         #format_impl
         #serde_impl
+        #mutable_impl
     })
 }
 

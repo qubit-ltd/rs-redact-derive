@@ -7,10 +7,10 @@
 // =============================================================================
 //! Compile-pass fixture for every enum variant shape.
 
-use qubit_redact_derive::{Redact, RedactMut};
+use qubit_redact_derive::Redact;
 
 /// Enum combining named, tuple, and unit variants.
-#[derive(Redact, RedactMut)]
+#[derive(Redact)]
 enum Event {
     /// Named variant with a sensitive field.
     Named {

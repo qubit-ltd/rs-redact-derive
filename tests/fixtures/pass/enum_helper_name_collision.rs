@@ -10,10 +10,10 @@
 #![allow(non_camel_case_types)]
 
 use qubit_redact::{Redact as RedactTrait, RedactMut as RedactMutTrait};
-use qubit_redact_derive::{Redact, RedactMut};
+use qubit_redact_derive::Redact;
 
 /// Enum variants whose old helper contexts both became `foo_bar_baz`.
-#[derive(Redact, RedactMut)]
+#[derive(Redact)]
 enum Collision {
     /// Variant whose name contributes the first half of the collision.
     foo_bar {

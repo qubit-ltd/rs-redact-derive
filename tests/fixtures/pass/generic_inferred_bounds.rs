@@ -11,13 +11,10 @@ use qubit_redact::{
     Redact as _,
     RedactMut as _,
 };
-use qubit_redact_derive::{
-    Redact,
-    RedactMut,
-};
+use qubit_redact_derive::Redact;
 
 /// The derive supplies the bounds required by its selected field modes.
-#[derive(Redact, RedactMut)]
+#[derive(Redact)]
 #[redact(serde)]
 struct GenericRecord<T> {
     /// A visible field requiring `Debug`.

@@ -20,11 +20,9 @@ use syn::{
 };
 
 use crate::{
-    container_attributes::ContainerAttributes,
     field_assertion,
     field_mode::FieldMode,
     generic_bounds,
-    input_model,
     internal::{
         ContainerData,
         FieldsData,
@@ -40,6 +38,7 @@ use crate::{
 ///
 /// * `input` - Parsed derive input whose generics and fields are preserved.
 /// * `runtime` - Resolved path to the `qubit-redact` runtime crate.
+/// * `model` - Shared parsed field and variant model from the immutable derive.
 ///
 /// # Returns
 ///
@@ -47,23 +46,16 @@ use crate::{
 ///
 /// # Errors
 ///
-/// Returns a targeted syntax error when container or field controls are
-/// invalid, or when the input is an unsupported union.
+/// Returns generated implementation tokens.
 pub(crate) fn expand(
     input: &DeriveInput,
     runtime: &Path,
+    model: &ContainerData<'_>,
 ) -> syn::Result<TokenStream> {
-    let container_attributes = ContainerAttributes::parse(input)?;
-    let model = input_model::parse(
-        input,
-        "RedactMut",
-        false,
-        container_attributes.require_explicit(),
-    )?;
     let mut redaction_generics = input.generics.clone();
     generic_bounds::add_mutable_bounds(
         &mut redaction_generics,
-        &model,
+        model,
         runtime,
     );
     let (mutable_assertions, mutations) = match &model {
