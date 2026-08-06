@@ -166,7 +166,26 @@ pub(crate) fn mutable(
         FieldMode::Plain | FieldMode::Skip => TokenStream::new(),
         FieldMode::Level(sensitivity) => {
             let level = sensitivity.runtime_tokens(runtime);
+            let capability = helper_name(
+                type_name,
+                field,
+                field_name,
+                "RedactValueMutCapability",
+            );
             quote_spanned! {field.span()=>
+                #[allow(non_camel_case_types)]
+                #[diagnostic::on_unimplemented(
+                    message = "mutable redaction capability is not implemented for {Self}",
+                    label = "this field cannot be redacted in place",
+                    note = "if this type only needs immutable redaction, add #[redact(no_mut)] to the derived type",
+                )]
+                trait #capability: #runtime::RedactValueMut {}
+
+                impl<__QubitRedactField> #capability for __QubitRedactField
+                where
+                    __QubitRedactField: #runtime::RedactValueMut + ?Sized,
+                {}
+
                 #[allow(non_snake_case)]
                 #[inline(always)]
                 fn #helper<__QubitRedactField>(
@@ -174,7 +193,7 @@ pub(crate) fn mutable(
                     policy: &#runtime::RedactionPolicy,
                 )
                 where
-                    __QubitRedactField: #runtime::RedactValueMut + ?Sized,
+                    __QubitRedactField: #capability + ?Sized,
                 {
                     #runtime::RedactValueMut::redact_value_in_place(
                         value,
@@ -184,40 +203,97 @@ pub(crate) fn mutable(
                 }
             }
         }
-        FieldMode::Nested => quote_spanned! {field.span()=>
-            #[allow(non_snake_case)]
-            #[inline(always)]
-            fn #helper<__QubitRedactField>(
-                value: &mut __QubitRedactField,
-                policy: &#runtime::RedactionPolicy,
-            )
-            where
-                __QubitRedactField: #runtime::RedactMut + ?Sized,
-            {
-                #runtime::RedactMut::redact_in_place_with(value, policy);
+        FieldMode::Nested => {
+            let capability = helper_name(
+                type_name,
+                field,
+                field_name,
+                "RedactMutCapability",
+            );
+            quote_spanned! {field.span()=>
+                #[allow(non_camel_case_types)]
+                #[diagnostic::on_unimplemented(
+                    message = "mutable redaction capability is not implemented for {Self}",
+                    label = "this field cannot be redacted in place",
+                    note = "if this type only needs immutable redaction, add #[redact(no_mut)] to the derived type",
+                )]
+                trait #capability: #runtime::RedactMut {}
+
+                impl<__QubitRedactField> #capability for __QubitRedactField
+                where
+                    __QubitRedactField: #runtime::RedactMut + ?Sized,
+                {}
+
+                #[allow(non_snake_case)]
+                #[inline(always)]
+                fn #helper<__QubitRedactField>(
+                    value: &mut __QubitRedactField,
+                    policy: &#runtime::RedactionPolicy,
+                )
+                where
+                    __QubitRedactField: #capability + ?Sized,
+                {
+                    #runtime::RedactMut::redact_in_place_with(value, policy);
+                }
             }
-        },
-        FieldMode::Map => quote_spanned! {field.span()=>
-            #[allow(non_snake_case)]
-            #[inline(always)]
-            fn #helper<
-                __QubitRedactField,
-                __QubitRedactKey: ?Sized,
-                __QubitRedactValue: ?Sized,
-            >(
-                value: &mut __QubitRedactField,
-                policy: &#runtime::RedactionPolicy,
-            )
-            where
-                __QubitRedactField:
-                    #runtime::RedactMapValueMut<
-                        __QubitRedactKey,
-                        __QubitRedactValue,
-                    > + ?Sized,
-            {
-                #runtime::RedactMapValueMut::redact_map_in_place(value, policy);
+        }
+        FieldMode::Map => {
+            let capability = helper_name(
+                type_name,
+                field,
+                field_name,
+                "RedactMapValueMutCapability",
+            );
+            quote_spanned! {field.span()=>
+                #[allow(non_camel_case_types)]
+                #[diagnostic::on_unimplemented(
+                    message = "mutable map redaction capability is not implemented for {Self}",
+                    label = "this field cannot be redacted in place",
+                    note = "if this type only needs immutable redaction, add #[redact(no_mut)] to the derived type",
+                )]
+                trait #capability<
+                    __QubitRedactKey: ?Sized,
+                    __QubitRedactValue: ?Sized,
+                >: #runtime::RedactMapValueMut<
+                    __QubitRedactKey,
+                    __QubitRedactValue,
+                > {}
+
+                impl<
+                    __QubitRedactField,
+                    __QubitRedactKey: ?Sized,
+                    __QubitRedactValue: ?Sized,
+                > #capability<__QubitRedactKey, __QubitRedactValue>
+                    for __QubitRedactField
+                where
+                    __QubitRedactField:
+                        #runtime::RedactMapValueMut<
+                            __QubitRedactKey,
+                            __QubitRedactValue,
+                        > + ?Sized,
+                {}
+
+                #[allow(non_snake_case)]
+                #[inline(always)]
+                fn #helper<
+                    __QubitRedactField,
+                    __QubitRedactKey: ?Sized,
+                    __QubitRedactValue: ?Sized,
+                >(
+                    value: &mut __QubitRedactField,
+                    policy: &#runtime::RedactionPolicy,
+                )
+                where
+                    __QubitRedactField:
+                        #capability<
+                            __QubitRedactKey,
+                            __QubitRedactValue,
+                        > + ?Sized,
+                {
+                    #runtime::RedactMapValueMut::redact_map_in_place(value, policy);
+                }
             }
-        },
+        }
         FieldMode::Json => quote_spanned! {field.span()=>
             #runtime::__qubit_redact_json! {
                 #[allow(non_snake_case)]
