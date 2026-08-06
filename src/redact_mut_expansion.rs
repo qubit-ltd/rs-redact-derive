@@ -53,11 +53,7 @@ pub(crate) fn expand(
     model: &ContainerData<'_>,
 ) -> syn::Result<TokenStream> {
     let mut redaction_generics = input.generics.clone();
-    generic_bounds::add_mutable_bounds(
-        &mut redaction_generics,
-        model,
-        runtime,
-    );
+    generic_bounds::add_mutable_bounds(&mut redaction_generics, model, runtime);
     let (mutable_assertions, mutations) = match &model {
         ContainerData::Struct(fields) => (
             mutable_assertions(&input.ident, fields, runtime),

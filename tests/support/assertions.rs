@@ -17,9 +17,7 @@ use qubit_redact::{
     RedactionPolicy,
     Sensitivity,
 };
-use qubit_redact_derive::{
-    Redact,
-};
+use qubit_redact_derive::Redact;
 
 /// Named record covering plain, sensitive, skipped, and map fields.
 #[derive(Redact)]

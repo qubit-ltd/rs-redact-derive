@@ -23,7 +23,8 @@ use qubit_redact::{
 };
 use qubit_redact_derive::Redact;
 
-/// A domain value receiving both immutable and mutable capabilities from one derive.
+/// A domain value receiving both immutable and mutable capabilities from one
+/// derive.
 #[derive(Redact)]
 struct User {
     username: &'static str,
