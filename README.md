@@ -11,7 +11,8 @@ Qubit Redact Derive provides procedural macros for the
 [`qubit-redact`](https://crates.io/crates/qubit-redact) runtime crate. Use
 them to define a deliberate redaction boundary for Rust domain objects: create
 safe borrowed diagnostic views with `Redact`, or explicitly replace logical
-values with `RedactMut`.
+values with `RedactMut`. A single `#[derive(Redact)]` generates both runtime
+capabilities by default.
 
 ## Why qubit-redact-derive
 
@@ -19,8 +20,9 @@ values with `RedactMut`.
   redaction reviewable at the domain-model boundary.
 - The macros support named, tuple, and unit structs, plus enums with all three
   variant shapes.
-- Optional Serde support serializes a redacted view without granting it
-  deserialization or exposing an original-value escape hatch.
+- Optional Serde support can make direct serialization of the original type
+  produce a redacted representation without granting it deserialization or
+  exposing an original-value escape hatch.
 - The generated code resolves a direct `qubit-redact` dependency, including a
   Cargo-renamed dependency, instead of relying on a fixed import spelling.
 
@@ -52,13 +54,40 @@ fn main() {
     };
 
     let output = format!("{:?}", credentials.redacted());
-    assert!(output.contains("ada"));
-    assert!(!output.contains("raw-password"));
+    assert_eq!(
+        output,
+        r#"Credentials { user: "ada", password: "<redacted>" }"#,
+    );
 }
 ```
 
 `Redact` creates a borrowed view. The original `Credentials` value remains
-available to application logic.
+available to application logic. The same derive also generates the
+`RedactMut` capability:
+
+```rust
+use qubit_redact::{Redact as _, RedactMut as _};
+use qubit_redact_derive::Redact;
+
+#[derive(Redact)]
+struct Credentials {
+    user: String,
+    #[redact(level = "secret")]
+    password: String,
+}
+
+fn main() {
+    let credentials = Credentials {
+        user: "ada".to_owned(),
+        password: "raw-password".to_owned(),
+    };
+    let credentials = credentials.into_redacted();
+    assert_eq!(credentials.password, "<redacted>");
+}
+```
+
+Use `#[redact(no_mut)]` when a type contains sensitive borrowed fields that
+cannot be replaced in place.
 
 For types whose fields must all be reviewed explicitly, add
 `#[redact(require_explicit)]`. Mark intentionally visible fields with
@@ -66,15 +95,16 @@ For types whose fields must all be reviewed explicitly, add
 
 ## Choose a Derive
 
-| Need | Derive | Result |
+| Need | Derive/attribute | Result |
 | --- | --- | --- |
 | Safely inspect or log a domain object without changing it | `Redact` | A borrowed `Redacted<T>` view. |
-| Serialize an already-redacted object | `Redact` with `#[redact(serde)]` | An opt-in `Serialize` implementation for `Redacted<T>`. |
-| Replace owned logical values before another boundary | `RedactMut` | An explicit `redact_in_place()` or `redact_in_place_with(...)` operation. |
+| Replace owned logical values before another boundary | `Redact` | `redact_in_place()` or `into_redacted()` from the generated `RedactMut` capability. |
 | Make an original type format through the process default policy | `Redact` with `#[redact(debug)]` or `#[redact(display)]` | Generated `Debug` and/or `Display` for the original type. |
+| Serialize the original type as redacted JSON | `Redact` with `#[redact(serde)]` | Direct redacted `Serialize` for the original type plus policy-aware serialization for `Redacted<T>`. |
 
-Use `Redact` for diagnostics whenever possible. Choose `RedactMut` only
-when the next boundary requires a logically replaced value.
+Use the immutable capability for diagnostics whenever possible. Use the
+generated mutable capability only when the next boundary requires a logically
+replaced value.
 
 ## Attribute Overview
 
@@ -82,7 +112,7 @@ Field attributes select exactly one handling mode:
 
 | Attribute | Effect |
 | --- | --- |
-| `#[redact(level = "low|medium|high|secret")]` | Masks the field with the specified runtime sensitivity. |
+| `#[redact(level = "low")]`, `"medium"`, `"high"`, or `"secret"` | Masks the field with the specified runtime sensitivity. |
 | `#[redact(plain)]` | Keeps the field visible and documents the intentional pass-through. |
 | `#[redact(skip)]` | Omits the field from the redacted view. |
 | `#[redact(nested)]` | Delegates redaction to the nested value. |
@@ -95,8 +125,21 @@ Container attributes are opt-in controls:
 | --- | --- |
 | `#[redact(debug)]` | Generates redacted `Debug` for the original type. |
 | `#[redact(display)]` | Generates redacted `Display` for the original type. |
-| `#[redact(serde)]` | Generates serialization support for `Redacted<T>`. |
+| `#[redact(serde)]` | Generates direct redacted `Serialize` for the original type and preserves policy-aware serialization for `Redacted<T>`. |
+| `#[redact(no_mut)]` | Does not generate `RedactMut`; useful for sensitive borrowed fields such as `&str`. |
 | `#[redact(require_explicit)]` | Requires every field to select one field mode; it does not change the default behavior. |
+
+The options can be combined in one attribute:
+
+```rust
+#[derive(Redact)]
+#[redact(debug, display, serde)]
+struct Login {
+    account: String,
+    #[redact(level = "secret")]
+    password: String,
+}
+```
 
 Unmarked fields use their ordinary `Debug` representation by default. They are
 neither masked nor recursively traversed. `require_explicit` changes only the
@@ -162,8 +205,9 @@ does not enable runtime features for downstream crates.
   the original value.
 - `RedactMut` performs logical replacement only. It does not erase released
   allocations, aliases, copies, or borrowed backing storage.
-- `debug` and `display` use the process-wide default policy. Use an
-  explicit `redacted_with` boundary when a call site needs policy isolation.
+- `debug`, `display`, and direct `serde` serialization use the process-wide
+  default policy. Use an explicit `redacted_with` boundary when a call site
+  needs policy isolation.
   Redacted `Debug` output uses the policy diagnostic output budget by default.
   Nested, map, and JSON fields share the same diagnostic session for one
   redacted view, so they cannot independently reset that budget.

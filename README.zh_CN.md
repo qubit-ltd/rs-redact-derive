@@ -9,13 +9,14 @@
 
 Qubit Redact Derive 为 [`qubit-redact`](https://crates.io/crates/qubit-redact)
 运行时 crate 提供过程派生宏。它在 Rust 领域对象上定义明确的脱敏边界：
-使用 `Redact` 创建安全的借用诊断视图，或使用 `RedactMut` 显式替换逻辑值。
+使用单一 `#[derive(Redact)]` 创建安全的借用诊断视图，并默认提供
+`RedactMut` 的逻辑替换能力。
 
 ## 为什么选择 qubit-redact-derive
 
 - 字段属性让掩码、忽略、嵌套脱敏和 Map 脱敏在领域模型边界清晰可审查。
 - 宏支持具名、tuple、unit struct，以及拥有这三种 variant 形态的 enum。
-- 可选 Serde 支持仅序列化脱敏视图，不提供反序列化或回到原始值的逃生接口。
+- 可选 Serde 支持让原类型直接序列化为脱敏表示，不提供反序列化或回到原始值的逃生接口。
 - 生成代码解析直接声明的 `qubit-redact` 依赖，支持 Cargo 重命名，而不依赖固定导入名。
 
 ## 快速开始
@@ -46,12 +47,39 @@ fn main() {
     };
 
     let output = format!("{:?}", credentials.redacted());
-    assert!(output.contains("ada"));
-    assert!(!output.contains("raw-password"));
+    assert_eq!(
+        output,
+        r#"Credentials { user: "ada", password: "<redacted>" }"#,
+    );
 }
 ```
 
 `Redact` 创建借用视图，原始 `Credentials` 仍可供应用逻辑使用。
+
+同一个 derive 默认也生成 `RedactMut` 能力：
+
+```rust
+use qubit_redact::RedactMut as _;
+use qubit_redact_derive::Redact;
+
+#[derive(Redact)]
+struct Credentials {
+    user: String,
+    #[redact(level = "secret")]
+    password: String,
+}
+
+fn main() {
+    let credentials = Credentials {
+        user: "ada".to_owned(),
+        password: "raw-password".to_owned(),
+    };
+    let credentials = credentials.into_redacted();
+    assert_eq!(credentials.password, "<redacted>");
+}
+```
+
+类型包含无法原地替换的敏感借用字段时，使用 `#[redact(no_mut)]`。
 
 如果一个类型要求所有字段都经过显式审查，可添加
 `#[redact(require_explicit)]`。有意保持可见的字段使用 `#[redact(plain)]`；不添加
@@ -59,15 +87,15 @@ fn main() {
 
 ## 如何选择派生宏
 
-| 需求 | 派生宏 | 结果 |
+| 需求 | 派生宏/属性 | 结果 |
 | --- | --- | --- |
 | 安全检查或记录领域对象，且不修改它 | `Redact` | 借用的 `Redacted<T>` 视图。 |
-| 序列化已脱敏对象 | 带 `#[redact(serde)]` 的 `Redact` | 为 `Redacted<T>` 显式生成 `Serialize`。 |
-| 在进入下一边界前替换拥有的逻辑值 | `RedactMut` | 显式调用 `redact_in_place()` 或 `redact_in_place_with(...)`。 |
+| 在进入下一边界前替换拥有的逻辑值 | `Redact` | 使用同一 derive 生成的 `RedactMut` 调用 `redact_in_place()` 或 `into_redacted()`。 |
 | 让原类型通过进程默认策略格式化 | 带 `#[redact(debug)]` 或 `#[redact(display)]` 的 `Redact` | 为原类型生成 `Debug` 和/或 `Display`。 |
+| 让原类型直接序列化为脱敏 JSON | 带 `#[redact(serde)]` 的 `Redact` | 为原类型生成脱敏 `Serialize`，同时保留 `Redacted<T>` 的策略感知序列化。 |
 
-诊断场景应优先使用 `Redact`；只有下一边界必须接收逻辑替换后的值时才使用
-`RedactMut`。
+诊断场景应优先使用 immutable 能力；只有下一边界必须接收逻辑替换后的值时才使用
+同一 derive 生成的 mutable 能力。
 
 ## 属性概览
 
@@ -75,7 +103,7 @@ fn main() {
 
 | 属性 | 效果 |
 | --- | --- |
-| `#[redact(level = "low|medium|high|secret")]` | 使用指定运行时敏感等级掩码该字段。 |
+| `#[redact(level = "low")]`、`"medium"`、`"high"` 或 `"secret"` | 使用指定运行时敏感等级掩码该字段。 |
 | `#[redact(plain)]` | 保持字段可见，并记录这是有意的直通。 |
 | `#[redact(skip)]` | 从脱敏视图中省略该字段。 |
 | `#[redact(nested)]` | 将脱敏委托给嵌套值。 |
@@ -88,8 +116,21 @@ fn main() {
 | --- | --- |
 | `#[redact(debug)]` | 为原类型生成脱敏 `Debug`。 |
 | `#[redact(display)]` | 为原类型生成脱敏 `Display`。 |
-| `#[redact(serde)]` | 为 `Redacted<T>` 生成序列化支持。 |
+| `#[redact(serde)]` | 为原类型生成脱敏 `Serialize`，并保留 `Redacted<T>` 的策略感知序列化。 |
+| `#[redact(no_mut)]` | 不生成 `RedactMut`；适用于 `&str` 等敏感借用字段。 |
 | `#[redact(require_explicit)]` | 要求每个字段选择一种字段模式；只影响当前 derive，不改变默认语义。 |
+
+这些选项可以合并写在一个属性中：
+
+```rust
+#[derive(Redact)]
+#[redact(debug, display, serde)]
+struct Login {
+    account: String,
+    #[redact(level = "secret")]
+    password: String,
+}
+```
 
 未标记字段默认使用其普通 `Debug` 表示，既不会被掩码，也不会被递归遍历。
 `require_explicit` 只改变写有该容器属性的 derive 调用。
@@ -141,7 +182,7 @@ serde_json = "1"
   或选择 `#[redact(require_explicit)]` 并为有意直通的字段使用 `#[redact(plain)]`。
 - `skip` 只从脱敏表示中省略值，不会擦除原始值。
 - `RedactMut` 只做逻辑替换，不会擦除已释放的分配内存、别名、副本或借用后备存储。
-- `debug` 和 `display` 使用进程级默认策略；调用点需要策略隔离时，应显式使用
+- `debug`、`display` 和直接 Serde 序列化使用进程级默认策略；调用点需要策略隔离时，应显式使用
   `redacted_with` 边界。脱敏 `Debug` 默认使用策略的诊断输出预算；同一个脱敏视图内的
   `nested`、`map` 和 `json` 字段共享一个诊断 session，不会分别重置预算。
 - 不要在 `level`、`nested`、`map` 或 `json` 字段上使用 `skip_serializing_if`；该谓词会接收

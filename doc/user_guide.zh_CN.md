@@ -13,7 +13,7 @@ Qubit Redact Derive 将字段级脱敏决策生成到 Rust 领域类型的实现
 - [1. 用 `Redact` 创建借用视图](#1-用-redact-创建借用视图)
 - [2. 选择字段处理方式](#2-选择字段处理方式)
 - [3. 支持的 struct 与 enum](#3-支持的-struct-与-enum)
-- [4. 用 `RedactMut` 替换逻辑值](#4-用-redactmut-替换逻辑值)
+- [4. 使用生成的 `RedactMut` 替换逻辑值](#4-使用生成的-redactmut-替换逻辑值)
 - [5. 生成 `Debug` 和 `Display`](#5-生成-debug-和-display)
 - [6. 用 Serde 序列化脱敏视图](#6-用-serde-序列化脱敏视图)
 - [7. 解析依赖与排查错误](#7-解析依赖与排查错误)
@@ -34,8 +34,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ```
 
-`serde` feature 只在使用 `#[redact(serde)]` 时需要；基本的 `Redact` 与
-`RedactMut` derive 不要求 Serde。
+`serde` feature 只在使用 `#[redact(serde)]` 时需要；基本的 `Redact` derive
+不要求 Serde。单一 `Redact` derive 默认同时生成 immutable `Redact` 和 mutable
+`RedactMut` 能力。
 
 使用 `#[redact(json)]` 时，还要启用运行时的 `json` feature。一个 derive 同时使用
 JSON 脱敏和 Serde 时，应同时启用两个 feature：
@@ -45,24 +46,28 @@ JSON 脱敏和 Serde 时，应同时启用两个 feature：
 
 ## 核心概念
 
-`Redact` 和 `RedactMut` 既是宏名也是运行时 trait 名，应分别导入以明确边界：
+`Redact` 和 `RedactMut` 是运行时 trait 名。derive crate 只提供一个 `Redact`
+derive；调用扩展方法时分别导入运行时 trait：
 
 ```rust
 use qubit_redact::{Redact as _, RedactMut as _};
-use qubit_redact_derive::{Redact, RedactMut};
+use qubit_redact_derive::Redact;
 ```
 
-`#[derive(Redact)]` 实现运行时 `Redact` trait。调用 `redacted()` 返回
+`#[derive(Redact)]` 默认同时实现两个运行时 trait；容器使用
+`#[redact(no_mut)]` 时只实现 immutable `Redact`。调用 `redacted()` 返回
 `Redacted<T>`：这是惰性的借用视图，持有策略快照而不修改 `T`。
-`redacted_with(&policy)` 使用显式策略快照。
+`redacted_with(&policy)` 使用显式策略快照。生成的 `RedactMut` 提供
+`redact_in_place()`、`into_redacted()` 和 `to_redacted()`，前提是被选字段支持逻辑替换。
 
-`#[derive(RedactMut)]` 实现 `RedactMut`。调用 `redact_in_place()` 使用当前默认
-策略；调用 `redact_in_place_with(&policy)` 使用显式快照并替换对象内的逻辑值。
+如果类型包含无法原地替换的敏感借用字段，例如 `&str`，请使用
+`#[redact(no_mut)]`。普通借用字段不参与 mutable capability 检查，因此不会阻止
+其他拥有式敏感字段进行原地脱敏。
 
 | 边界 | 首选方式 | 原因 |
 | --- | --- | --- |
 | Debug 输出、错误上下文、结构化诊断 | `Redact` | 源对象保持可用，脱敏视图清晰可见。 |
-| 后续 API 必须接收逻辑脱敏后的对象 | `RedactMut` | 修改在调用点明确且有意。 |
+| 后续 API 必须接收逻辑脱敏后的对象 | 生成的 `RedactMut` | 修改在调用点明确且有意。 |
 | 测试或子系统需要策略隔离 | `redacted_with` 或 `redact_in_place_with` | 调用点拥有策略，而不是使用进程默认值。 |
 
 ## 1. 用 `Redact` 创建借用视图
@@ -108,6 +113,12 @@ fn main() {
 | `nested` | 通过嵌套值的 `Redact` 实现格式化。 | 调用嵌套的 `RedactMut`。 | `Redact` / `RedactMut`。 |
 | `map` | 使用 key 和完整策略处理文本 key Map 的值。 | 原地处理这些 Map 值。 | `RedactMapValue` / `RedactMapValueMut`。 |
 | `json` | 递归脱敏存储在 `String` 中的 JSON 文本；无效 JSON 会被不透明替换。 | 将 `String` 改写为紧凑的脱敏 JSON。 | 运行时 `json` feature。 |
+
+除非容器使用 `#[redact(no_mut)]`，否则默认生成 mutable 实现。敏感 `&str` 字段无法实现
+`RedactValueMut`，因此省略 `no_mut` 时会在字段位置编译失败，并指出缺失的能力。请改用
+可拥有且可修改的类型，或添加 `no_mut`。没有脱敏模式的普通借用字段不要求
+`RedactValueMut`，不会阻止其他
+字段进行可变脱敏。
 
 敏感等级拼写区分大小写且必须小写；仅接受 `low`、`medium`、`high` 和 `secret`。
 
@@ -188,16 +199,17 @@ fn main() {
 union 会被拒绝。生成实现会保留泛型参数和 where clause，Rust 会验证字段满足所选属性需要的
 能力。
 
-## 4. 用 `RedactMut` 替换逻辑值
+## 4. 使用生成的 `RedactMut` 替换逻辑值
 
-`RedactMut` 使用相同字段语法。它只修改标记为 `level`、`nested` 或 `map` 的字段；
-普通字段和 `skip` 字段保持不变。
+同一个 `#[derive(Redact)]` 默认生成 `RedactMut`。它只修改标记为 `level`、`nested`
+或 `map` 的字段；普通字段和 `skip` 字段保持不变。添加
+`#[redact(no_mut)]` 可只生成 immutable 脱敏。
 
 ```rust
 use qubit_redact::RedactMut as _;
-use qubit_redact_derive::RedactMut;
+use qubit_redact_derive::Redact;
 
-#[derive(RedactMut)]
+#[derive(Redact)]
 struct Credentials {
     account: String,
     #[redact(level = "secret")]
@@ -251,11 +263,11 @@ fn main() {
 若类型已有对应 trait 实现，不要请求生成 `Debug` 或 `Display`。需要非默认策略的边界应避免
 生成格式化，改为格式化 `value.redacted_with(&policy)`。
 
-## 6. 用 Serde 序列化脱敏视图
+## 6. 用 Serde 序列化领域对象或脱敏视图
 
 序列化必须显式选择：在 `Redact` derive 上添加 `#[redact(serde)]`，启用
-`qubit-redact` 的 `serde` feature，并直接声明 `serde`。 `Redacted<T>` 只序列化，
-不反序列化。
+`qubit-redact` 的 `serde` feature，并直接声明 `serde`。原类型直接序列化时会自动脱敏；
+`Redacted<T>` 也支持序列化，但不反序列化。
 
 ```rust
 use qubit_redact::Redact as _;
@@ -279,13 +291,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         internal_note: "operator-only".to_owned(),
     };
 
-    let json = serde_json::to_string(&event.redacted())?;
+    let json = serde_json::to_string(&event)?;
     assert!(json.contains("accountName"));
     assert!(!json.contains("raw-token"));
     assert!(!json.contains("internal_note"));
     Ok(())
 }
 ```
+
+直接序列化使用进程级默认策略；如果需要显式策略快照，仍可序列化
+`event.redacted_with(&policy)`。`#[redact(serde)]` 只生成 `Serialize`，不生成
+`Deserialize`；调用方可以独立派生 `Deserialize`。
 
 宏保留当前脱敏表示需要的 Serde wire 控制项：
 

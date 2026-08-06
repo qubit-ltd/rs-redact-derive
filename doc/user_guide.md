@@ -14,7 +14,7 @@ policies and masks; this crate applies those decisions to structs and enums.
 - [1. Create a borrowed view with `Redact`](#1-create-a-borrowed-view-with-redact)
 - [2. Choose field handling](#2-choose-field-handling)
 - [3. Supported structs and enums](#3-supported-structs-and-enums)
-- [4. Replace logical values with `RedactMut`](#4-replace-logical-values-with-redactmut)
+- [4. Replace logical values with generated `RedactMut`](#4-replace-logical-values-with-generated-redactmut)
 - [5. Generate `Debug` and `Display`](#5-generate-debug-and-display)
 - [6. Serialize a redacted view with Serde](#6-serialize-a-redacted-view-with-serde)
 - [7. Resolve dependencies and diagnose errors](#7-resolve-dependencies-and-diagnose-errors)
@@ -37,7 +37,9 @@ serde_json = "1"
 ```
 
 The `serde` feature is needed only for `#[redact(serde)]`. Without it, the
-basic `Redact` and `RedactMut` derives have no Serde requirement.
+basic `Redact` derive has no Serde requirement. A single `Redact` derive
+generates both immutable `Redact` and mutable `RedactMut` capabilities by
+default.
 
 For `#[redact(json)]`, enable the runtime `json` feature as well. When a
 derive uses both JSON redaction and Serde, enable both features:
@@ -48,28 +50,31 @@ does not enable runtime features for downstream crates.
 
 ## Core concepts
 
-`Redact` and `RedactMut` are both macro names and runtime trait names.
-Import them separately to make the boundary explicit:
+`Redact` and `RedactMut` are runtime trait names. The derive crate exposes one
+derive macro, `Redact`; import runtime traits separately when calling their
+extension methods:
 
 ```rust
 use qubit_redact::{Redact as _, RedactMut as _};
-use qubit_redact_derive::{Redact, RedactMut};
+use qubit_redact_derive::Redact;
 ```
 
-`#[derive(Redact)]` implements the runtime `Redact` trait. Calling
-`redacted()` returns `Redacted<T>`, a lazy borrowed view that owns a snapshot
-of the policy and leaves `T` unchanged. `redacted_with(&policy)` chooses an
-explicit policy snapshot.
+`#[derive(Redact)]` implements both runtime traits unless the container uses
+`#[redact(no_mut)]`. Calling `redacted()` returns `Redacted<T>`, a lazy borrowed
+view that owns a snapshot of the policy and leaves `T` unchanged.
+`redacted_with(&policy)` chooses an explicit policy snapshot. The generated
+`RedactMut` capability provides `redact_in_place()`, `into_redacted()`, and
+`to_redacted()` where the selected fields support logical replacement.
 
-`#[derive(RedactMut)]` implements `RedactMut`. Calling
-`redact_in_place()` uses the current default policy; calling
-`redact_in_place_with(&policy)` chooses an explicit snapshot and replaces
-logical values in the object.
+Use `#[redact(no_mut)]` for a type with sensitive borrowed fields such as
+`&str` that cannot be replaced in place. A plain borrowed field is not part of
+the mutable capability check, so it does not prevent mutable redaction of other
+owned sensitive fields.
 
 | Boundary | Prefer | Why |
 | --- | --- | --- |
 | Debug output, error context, structured diagnostics | `Redact` | The source object remains available and the redacted view is explicit. |
-| A later API must receive a logically redacted object | `RedactMut` | Mutation is deliberate and visible at the call site. |
+| A later API must receive a logically redacted object | Generated `RedactMut` | Mutation is deliberate and visible at the call site. |
 | Policy isolation in a test or subsystem | `redacted_with` or `redact_in_place_with` | The call site owns the policy rather than using the process default. |
 
 ## 1. Create a borrowed view with `Redact`
@@ -117,6 +122,13 @@ using an empty `#[redact()]` attribute is a compile error.
 | `nested` | Formats the nested value through its `Redact` implementation. | Calls nested `RedactMut`. | `Redact` / `RedactMut`. |
 | `map` | Redacts text-keyed map values with keys and the full policy. | Redacts those map values in place. | `RedactMapValue` / `RedactMapValueMut`. |
 | `json` | Recursively redacts JSON text stored in a `String`; invalid JSON is replaced opaquely. | Rewrites the `String` as compact redacted JSON. | Runtime `json` feature. |
+
+The mutable implementation is generated unless the container uses
+`#[redact(no_mut)]`. A sensitive `&str` field therefore fails compilation when
+`no_mut` is omitted because it cannot implement `RedactValueMut`; the error
+points to the field and the missing capability. Use an owned mutable type or
+add `no_mut`. An ordinary borrowed field without a redaction mode does not require
+`RedactValueMut`, so it does not prevent mutable redaction of other fields.
 
 Sensitivity spelling is lowercase and exact. These are the only accepted
 literals: `low`, `medium`, `high`, and `secret`.
@@ -205,16 +217,17 @@ Unions are rejected. The generated implementation preserves generic parameters
 and where clauses, while Rust verifies the field capabilities selected by each
 attribute.
 
-## 4. Replace logical values with `RedactMut`
+## 4. Replace logical values with generated `RedactMut`
 
-`RedactMut` uses the same field grammar. It changes only fields marked
-`level`, `nested`, or `map`; plain and `skip` fields remain unchanged.
+The same `#[derive(Redact)]` generates `RedactMut` by default. It changes only
+fields marked `level`, `nested`, or `map`; plain and `skip` fields remain
+unchanged. Add `#[redact(no_mut)]` to generate only immutable redaction.
 
 ```rust
 use qubit_redact::RedactMut as _;
-use qubit_redact_derive::RedactMut;
+use qubit_redact_derive::Redact;
 
-#[derive(RedactMut)]
+#[derive(Redact)]
 struct Credentials {
     account: String,
     #[redact(level = "secret")]
@@ -271,11 +284,12 @@ Do not request generated `Debug` or `Display` when the type already has an
 implementation of that trait. For a boundary that needs a non-default policy,
 avoid generated formatting and format `value.redacted_with(&policy)` instead.
 
-## 6. Serialize a redacted view with Serde
+## 6. Serialize a domain object or view with Serde
 
 Serialization is opt-in. Add `#[redact(serde)]` to a `Redact` derive,
-enable `qubit-redact`'s `serde` feature, and declare `serde` directly.
-`Redacted<T>` serializes but does not deserialize.
+enable `qubit-redact`'s `serde` feature, and declare `serde` directly. Direct
+serialization of the original type is redacted; `Redacted<T>` also serializes
+but does not deserialize.
 
 ```rust
 use qubit_redact::Redact as _;
@@ -299,13 +313,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         internal_note: "operator-only".to_owned(),
     };
 
-    let json = serde_json::to_string(&event.redacted())?;
+    let json = serde_json::to_string(&event)?;
     assert!(json.contains("accountName"));
     assert!(!json.contains("raw-token"));
     assert!(!json.contains("internal_note"));
     Ok(())
 }
 ```
+
+Direct serialization uses the process-wide default policy. Serializing
+`event.redacted_with(&policy)` remains available when the caller needs an
+explicit policy snapshot. `#[redact(serde)]` generates `Serialize`, but not
+`Deserialize`; a type may derive `Deserialize` independently.
 
 The macro preserves the currently supported Serde wire controls needed by the
 redacted representation:
