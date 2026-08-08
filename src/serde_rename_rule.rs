@@ -7,7 +7,9 @@
 // =============================================================================
 //! Supported serde container rename rules.
 
+use syn::Error;
 use syn::LitStr;
+use syn::Result;
 
 /// Case conversion applied to serialized field names.
 #[must_use]
@@ -44,7 +46,7 @@ impl SerdeRenameRule {
     /// # Errors
     ///
     /// Returns an error at `literal` for an unsupported rule.
-    pub(crate) fn parse(literal: &LitStr) -> syn::Result<Self> {
+    pub(crate) fn parse(literal: &LitStr) -> Result<Self> {
         match literal.value().as_str() {
             "lowercase" => Ok(Self::Lowercase),
             "UPPERCASE" => Ok(Self::Uppercase),
@@ -54,7 +56,7 @@ impl SerdeRenameRule {
             "SCREAMING_SNAKE_CASE" => Ok(Self::ScreamingSnakeCase),
             "kebab-case" => Ok(Self::KebabCase),
             "SCREAMING-KEBAB-CASE" => Ok(Self::ScreamingKebabCase),
-            value => Err(syn::Error::new_spanned(
+            value => Err(Error::new_spanned(
                 literal,
                 format!(
                     "unsupported serde rename_all rule `{value}`; use a standard serde field \

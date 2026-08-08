@@ -8,19 +8,18 @@
 //! Strict field-level `redact` attribute parsing.
 
 use quote::ToTokens;
-use syn::{
-    Field,
-    Ident,
-    LitStr,
-    Meta,
-    Token,
-};
+use syn::Error;
+use syn::Field;
+use syn::Ident;
+use syn::LitStr;
+use syn::Meta;
+use syn::Result;
+use syn::Token;
+use syn::meta::ParseNestedMeta;
+use syn::token::Paren;
 
-use crate::{
-    field_mode::FieldMode,
-    sensitivity::Sensitivity,
-};
-
+use crate::field_mode::FieldMode;
+use crate::sensitivity::Sensitivity;
 /// Parsed attributes selecting exactly one mode for a named field.
 #[must_use]
 pub(crate) struct FieldAttributes {
@@ -51,7 +50,7 @@ impl FieldAttributes {
         type_name: &Ident,
         field_name: &str,
         require_explicit: bool,
-    ) -> syn::Result<Self> {
+    ) -> Result<Self> {
         let mut selected = None;
         for attribute in &field.attrs {
             if !attribute.path().is_ident("redact") {
@@ -124,10 +123,10 @@ impl FieldAttributes {
 /// Returns an error for unknown modes, missing level values, invalid
 /// sensitivity values, or arguments supplied to a bare mode.
 fn parse_mode(
-    meta: &syn::meta::ParseNestedMeta<'_>,
+    meta: &ParseNestedMeta<'_>,
     type_name: &Ident,
     field_name: &str,
-) -> syn::Result<FieldMode> {
+) -> Result<FieldMode> {
     if meta.path.is_ident("plain") {
         require_bare(
             meta,
@@ -204,12 +203,12 @@ fn parse_mode(
 /// arguments.
 #[inline]
 fn require_bare(
-    meta: &syn::meta::ParseNestedMeta<'_>,
+    meta: &ParseNestedMeta<'_>,
     type_name: &Ident,
     field_name: &str,
     requirement: &str,
-) -> syn::Result<()> {
-    if meta.input.peek(Token![=]) || meta.input.peek(syn::token::Paren) {
+) -> Result<()> {
+    if meta.input.peek(Token![=]) || meta.input.peek(Paren) {
         Err(meta.error(format!(
             "Redact derive for `{type_name}` field `{field_name}` requires {requirement}",
         )))
@@ -233,12 +232,12 @@ fn require_bare(
 /// Returns an error when another mode was already selected.
 #[inline]
 fn select_mode(
-    meta: &syn::meta::ParseNestedMeta<'_>,
+    meta: &ParseNestedMeta<'_>,
     type_name: &Ident,
     field_name: &str,
     selected: &mut Option<FieldMode>,
     mode: FieldMode,
-) -> syn::Result<()> {
+) -> Result<()> {
     if selected.is_some() {
         return Err(meta.error(format!(
             "Redact derive for `{type_name}` field `{field_name}` has conflicting or \
@@ -269,8 +268,8 @@ fn field_error(
     type_name: &Ident,
     field_name: &str,
     message: &str,
-) -> syn::Error {
-    syn::Error::new_spanned(
+) -> Error {
+    Error::new_spanned(
         tokens,
         format!(
             "Redact derive for `{type_name}` field `{field_name}`: {message}"

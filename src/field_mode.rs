@@ -8,7 +8,6 @@
 //! Unique formatting mode selected for one derived field.
 
 use crate::sensitivity::Sensitivity;
-
 /// Formatting behavior generated for one named field.
 #[must_use]
 pub(crate) enum FieldMode {

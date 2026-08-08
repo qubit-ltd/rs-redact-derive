@@ -7,11 +7,8 @@
 // =============================================================================
 //! Verifies direct serde dependency resolution for generated implementations.
 
-use std::{
-    env,
-    path::PathBuf,
-};
-
+use std::env;
+use std::path::PathBuf;
 mod support;
 
 /// Verifies redacted serialization requires serde as a direct dependency.

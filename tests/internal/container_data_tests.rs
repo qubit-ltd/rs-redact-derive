@@ -8,7 +8,6 @@
 //! Black-box tests for parsed container shape selection.
 
 use crate::support;
-
 /// Verifies enum containers reach immutable expansion.
 #[test]
 fn test_container_data_selects_enum_shape() {

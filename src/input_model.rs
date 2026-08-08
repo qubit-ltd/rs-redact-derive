@@ -7,23 +7,19 @@
 // =============================================================================
 //! Single parsing boundary for all supported derive input shapes.
 
-use syn::{
-    Data,
-    DeriveInput,
-    Fields,
-};
+use syn::Data;
+use syn::DeriveInput;
+use syn::Error;
+use syn::Fields;
+use syn::Ident;
+use syn::Result;
 
-use crate::{
-    internal::{
-        ContainerData,
-        FieldsData,
-        VariantData,
-    },
-    named_fields,
-    serde_variant_attributes::SerdeVariantAttributes,
-    unnamed_fields,
-};
-
+use crate::internal::ContainerData;
+use crate::internal::FieldsData;
+use crate::internal::VariantData;
+use crate::named_fields;
+use crate::serde_variant_attributes::SerdeVariantAttributes;
+use crate::unnamed_fields;
 /// Parses one derive input into the shared semantic model.
 ///
 /// # Type Parameters
@@ -49,7 +45,7 @@ pub(crate) fn parse<'a>(
     derive_name: &str,
     serde_enabled: bool,
     require_explicit: bool,
-) -> syn::Result<ContainerData<'a>> {
+) -> Result<ContainerData<'a>> {
     match &input.data {
         Data::Struct(data) => Ok(ContainerData::Struct(parse_fields(
             &data.fields,
@@ -81,10 +77,10 @@ pub(crate) fn parse<'a>(
                         serde_attributes,
                     ))
                 })
-                .collect::<syn::Result<Vec<_>>>()?;
+                .collect::<Result<Vec<_>>>()?;
             Ok(ContainerData::Enum(variants))
         }
-        Data::Union(_) => Err(syn::Error::new_spanned(
+        Data::Union(_) => Err(Error::new_spanned(
             input,
             format!("{derive_name} cannot be derived for unions"),
         )),
@@ -112,10 +108,10 @@ pub(crate) fn parse<'a>(
 /// Returns a targeted error when a field attribute is invalid.
 fn parse_fields<'a>(
     fields: &'a Fields,
-    type_name: &syn::Ident,
+    type_name: &Ident,
     serde_enabled: bool,
     require_explicit: bool,
-) -> syn::Result<FieldsData<'a>> {
+) -> Result<FieldsData<'a>> {
     match fields {
         Fields::Named(fields) => Ok(FieldsData::Named(named_fields::parse(
             fields,

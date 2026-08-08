@@ -8,33 +8,22 @@
 //! Bindings and carriers shared by enum representation expansions.
 
 use proc_macro2::TokenStream;
-use quote::{
-    format_ident,
-    quote,
-    quote_spanned,
-};
-use syn::{
-    Path,
-    spanned::Spanned,
-};
+use quote::format_ident;
+use quote::quote;
+use quote::quote_spanned;
+use syn::Ident;
+use syn::Path;
+use syn::spanned::Spanned;
 
-use crate::{
-    internal::{
-        NamedField,
-        UnnamedField,
-        VariantData,
-    },
-    serde_container_attributes::SerdeContainerAttributes,
-};
-
-use super::field_serialization::{
-    field_context,
-    field_is_skipped,
-    raw_identifier,
-    serialization_condition,
-    serialized_carrier,
-};
-
+use super::field_serialization::field_context;
+use super::field_serialization::field_is_skipped;
+use super::field_serialization::raw_identifier;
+use super::field_serialization::serialization_condition;
+use super::field_serialization::serialized_carrier;
+use crate::internal::NamedField;
+use crate::internal::UnnamedField;
+use crate::internal::VariantData;
+use crate::serde_container_attributes::SerdeContainerAttributes;
 /// Builds bindings, carriers, names, and conditions for named enum fields.
 ///
 /// # Parameters
@@ -51,8 +40,8 @@ use super::field_serialization::{
 /// The match pattern, carrier setup statements, inclusion conditions,
 /// serialized field names, and carrier identifiers.
 pub(super) fn enum_named_parts(
-    type_name: &syn::Ident,
-    variant_name: &syn::Ident,
+    type_name: &Ident,
+    variant_name: &Ident,
     fields: &[NamedField<'_>],
     runtime: &Path,
     container_attributes: &SerdeContainerAttributes,
@@ -62,7 +51,7 @@ pub(super) fn enum_named_parts(
     Vec<TokenStream>,
     Vec<TokenStream>,
     Vec<String>,
-    Vec<syn::Ident>,
+    Vec<Ident>,
 ) {
     let patterns = fields.iter().map(|parsed| {
         let identifier = parsed.identifier();
@@ -147,17 +136,12 @@ pub(super) fn enum_named_parts(
 /// The match pattern, carrier setup statements, inclusion conditions, and
 /// carrier identifiers.
 pub(super) fn enum_unnamed_parts(
-    type_name: &syn::Ident,
-    variant_name: &syn::Ident,
+    type_name: &Ident,
+    variant_name: &Ident,
     variant_index: u32,
     fields: &[UnnamedField<'_>],
     runtime: &Path,
-) -> (
-    TokenStream,
-    Vec<TokenStream>,
-    Vec<TokenStream>,
-    Vec<syn::Ident>,
-) {
+) -> (TokenStream, Vec<TokenStream>, Vec<TokenStream>, Vec<Ident>) {
     let bindings = fields
         .iter()
         .map(|parsed| {

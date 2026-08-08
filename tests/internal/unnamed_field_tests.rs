@@ -8,7 +8,6 @@
 //! Black-box tests for parsed positional-field state.
 
 use crate::support;
-
 /// Verifies parsed positional fields retain stable indexes and controls.
 #[test]
 fn test_unnamed_field_retains_index_and_controls() {

@@ -9,7 +9,6 @@
 
 use qubit_redact::Redact as _;
 use qubit_redact_derive::Redact;
-
 /// Externally tagged enum covering every field shape.
 #[derive(Redact)]
 #[redact(serde)]

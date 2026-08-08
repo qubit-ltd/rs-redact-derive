@@ -9,7 +9,6 @@
 
 use qubit_redact::Redact as _;
 use qubit_redact_derive::Redact;
-
 /// Enum using container rules plus explicit variant and field overrides.
 #[derive(Redact)]
 #[redact(serde)]

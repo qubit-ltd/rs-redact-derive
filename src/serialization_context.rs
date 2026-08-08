@@ -6,12 +6,10 @@
 //    Licensed under the Apache License, Version 2.0.
 // =============================================================================
 //! Shared paths and generic metadata for serialization assertions.
-// qubit-style: allow source-test-pair
 
-use syn::{
-    Generics,
-    Path,
-};
+// qubit-style: allow source-test-pair
+use syn::Generics;
+use syn::Path;
 
 /// Context shared by serialization capability assertions for one item.
 pub(crate) struct SerializationContext<'a> {

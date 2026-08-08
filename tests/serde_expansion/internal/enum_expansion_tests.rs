@@ -9,7 +9,6 @@
 
 use qubit_redact::Redact as _;
 use qubit_redact_derive::Redact;
-
 /// Enum whose selected variants are explicitly excluded from serialization.
 #[derive(Redact)]
 #[redact(serde)]

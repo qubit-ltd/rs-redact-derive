@@ -8,7 +8,6 @@
 //! Black-box tests for parsed enum variant state.
 
 use crate::support;
-
 /// Verifies parsed variants retain names, order, and field shapes.
 #[test]
 fn test_variant_data_retains_variant_shapes() {

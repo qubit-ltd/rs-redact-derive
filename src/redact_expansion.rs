@@ -8,36 +8,29 @@
 //! Combined immutable and mutable `Redact` implementation generation.
 
 use proc_macro2::TokenStream;
-use quote::{
-    format_ident,
-    quote,
-    quote_spanned,
-};
-use syn::{
-    DeriveInput,
-    Path,
-    spanned::Spanned,
-};
+use quote::format_ident;
+use quote::quote;
+use quote::quote_spanned;
+use syn::DeriveInput;
+use syn::Ident;
+use syn::Path;
+use syn::Result;
+use syn::spanned::Spanned;
 
-use crate::{
-    container_attributes::ContainerAttributes,
-    field_assertion,
-    field_mode::FieldMode,
-    format_expansion,
-    generic_bounds,
-    input_model,
-    internal::{
-        ContainerData,
-        FieldsData,
-        NamedField,
-        UnnamedField,
-        VariantData,
-    },
-    serde_container_attributes::SerdeContainerAttributes,
-    serde_expansion,
-    serde_path,
-};
-
+use crate::container_attributes::ContainerAttributes;
+use crate::field_assertion;
+use crate::field_mode::FieldMode;
+use crate::format_expansion;
+use crate::generic_bounds;
+use crate::input_model;
+use crate::internal::ContainerData;
+use crate::internal::FieldsData;
+use crate::internal::NamedField;
+use crate::internal::UnnamedField;
+use crate::internal::VariantData;
+use crate::serde_container_attributes::SerdeContainerAttributes;
+use crate::serde_expansion;
+use crate::serde_path;
 /// Expands a struct into its runtime `Redact` implementation.
 ///
 /// # Parameters
@@ -57,7 +50,7 @@ use crate::{
 pub(crate) fn expand(
     input: &DeriveInput,
     runtime: &Path,
-) -> syn::Result<TokenStream> {
+) -> Result<TokenStream> {
     let container_attributes = ContainerAttributes::parse(input)?;
     let model = input_model::parse(
         input,
@@ -140,7 +133,7 @@ pub(crate) fn expand(
 ///
 /// Zero-cost local capability assertions for explicitly redacted fields.
 fn immutable_assertions(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     fields: &FieldsData<'_>,
     runtime: &Path,
 ) -> Vec<TokenStream> {
@@ -187,7 +180,7 @@ fn immutable_assertions(
 ///
 /// A complete formatter expression for named, tuple, or unit structs.
 fn format_body(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     fields: &FieldsData<'_>,
     runtime: &Path,
 ) -> TokenStream {
@@ -215,7 +208,7 @@ fn format_body(
 ///
 /// A `DebugStruct` expression omitting skipped fields.
 fn named_format_body(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     fields: &[NamedField<'_>],
     runtime: &Path,
 ) -> TokenStream {
@@ -275,7 +268,7 @@ fn named_format_body(
 ///
 /// A `DebugTuple` expression omitting skipped fields.
 fn unnamed_format_body(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     fields: &[UnnamedField<'_>],
     runtime: &Path,
 ) -> TokenStream {
@@ -354,7 +347,7 @@ const fn immutable_trait_name(mode: &FieldMode) -> &'static str {
 ///
 /// Zero-cost local capability assertions with variant-qualified names.
 fn enum_immutable_assertions(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     variants: &[VariantData<'_>],
     runtime: &Path,
 ) -> Vec<TokenStream> {
@@ -416,7 +409,7 @@ fn enum_immutable_assertions(
 ///
 /// A complete match expression preserving each variant's debug shape.
 fn enum_format_body(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     variants: &[VariantData<'_>],
     runtime: &Path,
 ) -> TokenStream {
@@ -454,9 +447,9 @@ fn enum_format_body(
 ///
 /// A match arm using `DebugStruct` semantics.
 fn enum_named_format_arm(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     variant_index: u32,
-    variant_name: &syn::Ident,
+    variant_name: &Ident,
     fields: &[NamedField<'_>],
     runtime: &Path,
 ) -> TokenStream {
@@ -528,9 +521,9 @@ fn enum_named_format_arm(
 ///
 /// A match arm using `DebugTuple` semantics.
 fn enum_unnamed_format_arm(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     variant_index: u32,
-    variant_name: &syn::Ident,
+    variant_name: &Ident,
     fields: &[UnnamedField<'_>],
     runtime: &Path,
 ) -> TokenStream {
@@ -611,7 +604,7 @@ fn enum_unnamed_format_arm(
 #[inline]
 fn variant_field_context(
     variant_index: u32,
-    variant_name: &syn::Ident,
+    variant_name: &Ident,
     field_name: &str,
 ) -> String {
     format!("{variant_name}_{variant_index}_{field_name}")

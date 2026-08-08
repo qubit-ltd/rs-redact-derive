@@ -7,17 +7,17 @@
 // =============================================================================
 //! Whitelisted Serde variant attributes for redacted serialization.
 
-use syn::{
-    Meta,
-    Token,
-    Variant,
-};
+use syn::Error;
+use syn::Ident;
+use syn::LitStr;
+use syn::Meta;
+use syn::Result;
+use syn::Token;
+use syn::Variant;
+use syn::token::Paren;
 
-use crate::{
-    internal::parse_serialize_name,
-    serde_rename_rule::SerdeRenameRule,
-};
-
+use crate::internal::parse_serialize_name;
+use crate::serde_rename_rule::SerdeRenameRule;
 /// Validated variant name, field rename rule, and skip state.
 #[must_use]
 pub(crate) struct SerdeVariantAttributes {
@@ -56,9 +56,9 @@ impl SerdeVariantAttributes {
     /// segments, which violates the `ParseNestedMeta` path invariant.
     pub(crate) fn parse(
         variant: &Variant,
-        type_name: &syn::Ident,
+        type_name: &Ident,
         enabled: bool,
-    ) -> syn::Result<Self> {
+    ) -> Result<Self> {
         let mut parsed = Self {
             rename: None,
             rename_seen: false,
@@ -74,7 +74,7 @@ impl SerdeVariantAttributes {
                 continue;
             }
             let Meta::List(_) = &attribute.meta else {
-                return Err(syn::Error::new_spanned(
+                return Err(Error::new_spanned(
                     attribute,
                     format!(
                         "Redact serde for `{type_name}` variant `{}` expects `#[serde(...)]`",
@@ -111,7 +111,7 @@ impl SerdeVariantAttributes {
                     || meta.path.is_ident("skip_serializing")
                 {
                     if meta.input.peek(Token![=])
-                        || meta.input.peek(syn::token::Paren)
+                        || meta.input.peek(Paren)
                     {
                         return Err(meta.error(format!(
                             "Redact serde for `{type_name}` variant `{}` requires a bare skip attribute",
@@ -126,10 +126,10 @@ impl SerdeVariantAttributes {
                     }
                     parsed.skip = true;
                 } else if meta.path.is_ident("alias") {
-                    let _: syn::LitStr = meta.value()?.parse()?;
+                    let _: LitStr = meta.value()?.parse()?;
                 } else if meta.path.is_ident("skip_deserializing") {
                     if meta.input.peek(Token![=])
-                        || meta.input.peek(syn::token::Paren)
+                        || meta.input.peek(Paren)
                     {
                         return Err(meta.error(format!(
                             "Redact serde for `{type_name}` variant `{}` requires a bare deserialization-only control",

@@ -8,30 +8,23 @@
 //! Mutable `RedactMut` implementation generation.
 
 use proc_macro2::TokenStream;
-use quote::{
-    format_ident,
-    quote,
-    quote_spanned,
-};
-use syn::{
-    DeriveInput,
-    Path,
-    spanned::Spanned,
-};
+use quote::format_ident;
+use quote::quote;
+use quote::quote_spanned;
+use syn::DeriveInput;
+use syn::Ident;
+use syn::Path;
+use syn::Result;
+use syn::spanned::Spanned;
 
-use crate::{
-    field_assertion,
-    field_mode::FieldMode,
-    generic_bounds,
-    internal::{
-        ContainerData,
-        FieldsData,
-        NamedField,
-        UnnamedField,
-        VariantData,
-    },
-};
-
+use crate::field_assertion;
+use crate::field_mode::FieldMode;
+use crate::generic_bounds;
+use crate::internal::ContainerData;
+use crate::internal::FieldsData;
+use crate::internal::NamedField;
+use crate::internal::UnnamedField;
+use crate::internal::VariantData;
 /// Expands a struct into its runtime `RedactMut` implementation.
 ///
 /// # Parameters
@@ -51,7 +44,7 @@ pub(crate) fn expand(
     input: &DeriveInput,
     runtime: &Path,
     model: &ContainerData<'_>,
-) -> syn::Result<TokenStream> {
+) -> Result<TokenStream> {
     let mut redaction_generics = input.generics.clone();
     generic_bounds::add_mutable_bounds(&mut redaction_generics, model, runtime);
     let (mutable_assertions, mutations) = match &model {
@@ -91,7 +84,7 @@ pub(crate) fn expand(
 ///
 /// Zero-cost local capability assertions for destructively redacted fields.
 fn mutable_assertions(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     fields: &FieldsData<'_>,
     runtime: &Path,
 ) -> Vec<TokenStream> {
@@ -137,7 +130,7 @@ fn mutable_assertions(
 ///
 /// Mutation statements for fields with destructive redaction modes.
 fn mutations(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     fields: &FieldsData<'_>,
     runtime: &Path,
 ) -> TokenStream {
@@ -165,7 +158,7 @@ fn mutations(
 ///
 /// Mutation statements for fields with destructive redaction modes.
 fn named_mutations(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     fields: &[NamedField<'_>],
     runtime: &Path,
 ) -> Vec<TokenStream> {
@@ -206,7 +199,7 @@ fn named_mutations(
 ///
 /// Mutation statements for fields with destructive redaction modes.
 fn unnamed_mutations(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     fields: &[UnnamedField<'_>],
     runtime: &Path,
 ) -> Vec<TokenStream> {
@@ -267,7 +260,7 @@ const fn mutable_trait_name(mode: &FieldMode) -> &'static str {
 ///
 /// Zero-cost local capability assertions with variant-qualified names.
 fn enum_mutable_assertions(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     variants: &[VariantData<'_>],
     runtime: &Path,
 ) -> Vec<TokenStream> {
@@ -329,7 +322,7 @@ fn enum_mutable_assertions(
 ///
 /// A complete match expression that mutates only the active variant.
 fn enum_mutations(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     variants: &[VariantData<'_>],
     runtime: &Path,
 ) -> TokenStream {
@@ -373,9 +366,9 @@ fn enum_mutations(
 ///
 /// A match arm mutating explicitly selected bindings.
 fn enum_named_mutation_arm(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     variant_index: u32,
-    variant_name: &syn::Ident,
+    variant_name: &Ident,
     fields: &[NamedField<'_>],
     runtime: &Path,
 ) -> TokenStream {
@@ -401,8 +394,7 @@ fn enum_named_mutation_arm(
             return None;
         }
         let field_name = identifier.to_string();
-        let context =
-            variant_field_context(variant_index, variant_name, &field_name);
+        let context = variant_field_context(variant_index, variant_name, &field_name);
         let helper =
             field_assertion::helper_name(type_name, field, &context, mutable_trait_name(mode));
         let invocation = if matches!(mode, FieldMode::Json) {
@@ -432,9 +424,9 @@ fn enum_named_mutation_arm(
 ///
 /// A match arm mutating explicitly selected positional bindings.
 fn enum_unnamed_mutation_arm(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     variant_index: u32,
-    variant_name: &syn::Ident,
+    variant_name: &Ident,
     fields: &[UnnamedField<'_>],
     runtime: &Path,
 ) -> TokenStream {
@@ -471,8 +463,7 @@ fn enum_unnamed_mutation_arm(
                 return None;
             }
             let field_name = parsed.index().index.to_string();
-            let context =
-                variant_field_context(variant_index, variant_name, &field_name);
+            let context = variant_field_context(variant_index, variant_name, &field_name);
             let helper =
                 field_assertion::helper_name(type_name, field, &context, mutable_trait_name(mode));
             let invocation = if matches!(mode, FieldMode::Json) {
@@ -503,7 +494,7 @@ fn enum_unnamed_mutation_arm(
 #[inline]
 fn variant_field_context(
     variant_index: u32,
-    variant_name: &syn::Ident,
+    variant_name: &Ident,
     field_name: &str,
 ) -> String {
     format!("{variant_name}_{variant_index}_{field_name}")

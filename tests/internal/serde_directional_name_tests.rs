@@ -7,11 +7,11 @@
 // =============================================================================
 //! Tests for directional Serde-name parsing.
 
-use syn::{
-    Attribute,
-    parse::Parser,
-    parse_quote,
-};
+use syn::Attribute;
+use syn::Result;
+use syn::meta::parser;
+use syn::parse::Parser;
+use syn::parse_quote;
 
 #[path = "../../src/internal/serde_directional_name.rs"]
 mod serde_directional_name;
@@ -29,7 +29,7 @@ mod serde_directional_name;
 /// # Errors
 ///
 /// Returns the parser error produced for malformed directional names.
-fn parse_rename(attribute: Attribute) -> syn::Result<Option<String>> {
+fn parse_rename(attribute: Attribute) -> Result<Option<String>> {
     let mut serialized_name = None;
     attribute.parse_nested_meta(|meta| {
         if meta.path.is_ident("rename") {
@@ -85,7 +85,7 @@ fn test_parse_serialize_name_rejects_invalid_directional_controls() {
     }
 
     let mut serialized_name = None;
-    let parser = syn::meta::parser(|meta| {
+    let parser = parser(|meta| {
         serialized_name =
             serde_directional_name::parse_serialize_name(&meta, "rename")?;
         Ok(())

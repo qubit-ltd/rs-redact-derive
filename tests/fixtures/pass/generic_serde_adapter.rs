@@ -9,7 +9,8 @@
 
 use std::fmt;
 
-use qubit_redact::{Redact as _, RedactionPolicy};
+use qubit_redact::Redact as _;
+use qubit_redact::RedactionPolicy;
 use qubit_redact_derive::Redact;
 
 /// A value that implements `Debug` but intentionally not `Serialize`.

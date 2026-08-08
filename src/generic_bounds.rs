@@ -9,37 +9,28 @@
 
 use std::collections::BTreeSet;
 
-use proc_macro2::{
-    TokenStream,
-    TokenTree,
-};
-use quote::{
-    ToTokens,
-    format_ident,
-    quote,
-};
+use proc_macro2::Span;
+use proc_macro2::TokenStream;
+use proc_macro2::TokenTree;
+use quote::ToTokens;
+use quote::format_ident;
+use quote::quote;
+use syn::Field;
+use syn::GenericParam;
+use syn::Generics;
+use syn::Ident;
+use syn::Lifetime;
+use syn::Path;
+use syn::Type;
+use syn::WhereClause;
+use syn::WherePredicate;
+use syn::parse_quote;
 use syn::punctuated::Punctuated;
-use syn::{
-    Field,
-    GenericParam,
-    Generics,
-    Ident,
-    Lifetime,
-    Path,
-    Type,
-    WhereClause,
-    WherePredicate,
-    parse_quote,
-};
+use syn::token::Comma;
 
-use crate::{
-    field_mode::FieldMode,
-    internal::{
-        ContainerData,
-        FieldsData,
-    },
-};
-
+use crate::field_mode::FieldMode;
+use crate::internal::ContainerData;
+use crate::internal::FieldsData;
 /// Adds capability bounds needed by immutable formatting.
 ///
 /// Bounds are added only when a field type refers to one of the input's type
@@ -275,15 +266,14 @@ pub(crate) fn generics_for_field(
         .cloned()
         .collect();
     filtered.where_clause = filtered.where_clause.and_then(|where_clause| {
-        let predicates: Punctuated<WherePredicate, syn::token::Comma> =
-            where_clause
-                .predicates
-                .into_iter()
-                .filter(|predicate| {
-                    let names = parameter_names_in(predicate, &parameter_names);
-                    names.iter().any(|name| used.contains(name))
-                })
-                .collect();
+        let predicates: Punctuated<WherePredicate, Comma> = where_clause
+            .predicates
+            .into_iter()
+            .filter(|predicate| {
+                let names = parameter_names_in(predicate, &parameter_names);
+                names.iter().any(|name| used.contains(name))
+            })
+            .collect();
         if predicates.is_empty() {
             None
         } else {
@@ -322,7 +312,7 @@ pub(crate) fn fresh_lifetime(generics: &Generics) -> Lifetime {
             .find(|candidate| !used.contains(candidate))
             .expect("an unused generated lifetime should always exist")
     };
-    Lifetime::new(&format!("'{name}"), proc_macro2::Span::call_site())
+    Lifetime::new(&format!("'{name}"), Span::call_site())
 }
 
 /// Returns generic parameter names declared by one input.

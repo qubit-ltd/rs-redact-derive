@@ -7,17 +7,17 @@
 // =============================================================================
 //! Shared Cargo-aware crate-path mapping for generated derive code.
 
-use proc_macro_crate::{
-    Error,
-    FoundCrate,
-};
+use std::result::Result as CrateResult;
+
+use proc_macro_crate::Error as CrateError;
+use proc_macro_crate::FoundCrate;
 use proc_macro2::Span;
 use quote::format_ident;
-use syn::{
-    DeriveInput,
-    Path,
-    parse_quote,
-};
+use syn::DeriveInput;
+use syn::Error;
+use syn::Path;
+use syn::Result;
+use syn::parse_quote;
 
 /// Converts a Cargo crate lookup into an absolute generated-code path.
 ///
@@ -37,10 +37,10 @@ use syn::{
 /// Returns a syntax error attached to `input` when the Cargo lookup failed.
 pub(crate) fn resolve(
     input: &DeriveInput,
-    result: Result<FoundCrate, Error>,
+    result: CrateResult<FoundCrate, CrateError>,
     itself: Path,
     error_context: &str,
-) -> syn::Result<Path> {
+) -> Result<Path> {
     match result {
         Ok(FoundCrate::Itself) => Ok(itself),
         Ok(FoundCrate::Name(name)) => {
@@ -51,7 +51,7 @@ pub(crate) fn resolve(
             );
             Ok(parse_quote!(::#identifier))
         }
-        Err(error) => Err(syn::Error::new_spanned(
+        Err(error) => Err(Error::new_spanned(
             input,
             format!("{error_context}: {error}"),
         )),

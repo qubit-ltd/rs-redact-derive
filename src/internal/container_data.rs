@@ -7,11 +7,8 @@
 // =============================================================================
 //! Parsed container shape shared by every derive backend.
 
-use crate::internal::{
-    FieldsData,
-    VariantData,
-};
-
+use crate::internal::FieldsData;
+use crate::internal::VariantData;
 /// Validated struct or enum data in source order.
 ///
 /// # Type Parameters

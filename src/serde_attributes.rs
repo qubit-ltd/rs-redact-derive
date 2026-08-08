@@ -7,20 +7,20 @@
 // =============================================================================
 //! Whitelisted serde field attributes for redacted serialization.
 
-use syn::{
-    Field,
-    Ident,
-    LitStr,
-    Meta,
-    Path,
-    Token,
-};
+use syn::Error;
+use syn::Field;
+use syn::Ident;
+use syn::LitStr;
+use syn::Meta;
+use syn::Path;
+use syn::Result;
+use syn::Token;
+use syn::meta::ParseNestedMeta;
+use syn::parse_quote;
+use syn::token::Paren;
 
-use crate::{
-    field_mode::FieldMode,
-    internal::parse_serialize_name,
-};
-
+use crate::field_mode::FieldMode;
+use crate::internal::parse_serialize_name;
 /// Serde controls that preserve the generated redacted structure.
 #[must_use]
 pub(crate) struct SerdeAttributes {
@@ -64,7 +64,7 @@ impl SerdeAttributes {
         type_name: &Ident,
         field_name: &str,
         enabled: bool,
-    ) -> syn::Result<Self> {
+    ) -> Result<Self> {
         let mut parsed = Self {
             rename: None,
             rename_seen: false,
@@ -80,7 +80,7 @@ impl SerdeAttributes {
                 continue;
             }
             let Meta::List(_) = &attribute.meta else {
-                return Err(syn::Error::new_spanned(
+                return Err(Error::new_spanned(
                     attribute,
                     format!(
                         "Redact serde for `{type_name}` field `{field_name}` expects \
@@ -137,7 +137,7 @@ impl SerdeAttributes {
                     let literal: LitStr = meta.value()?.parse()?;
                     let path: Path = literal.parse()?;
                     parsed.serialize_with = if meta.path.is_ident("with") {
-                        Some(syn::parse_quote!(#path::serialize))
+                        Some(parse_quote!(#path::serialize))
                     } else {
                         Some(path)
                     };
@@ -186,11 +186,11 @@ impl SerdeAttributes {
         type_name: &Ident,
         field_name: &str,
         mode: &FieldMode,
-    ) -> syn::Result<()> {
+    ) -> Result<()> {
         if self.skip_serializing_if.is_some()
             && !matches!(mode, FieldMode::Plain | FieldMode::Skip)
         {
-            return Err(syn::Error::new_spanned(
+            return Err(Error::new_spanned(
                 field,
                 format!(
                     "Redact serde for `{type_name}` field `{field_name}` cannot use `skip_serializing_if` with a redaction mode that observes raw field state; use it only with `plain` or `skip`",
@@ -200,7 +200,7 @@ impl SerdeAttributes {
         if self.serialize_with.is_some()
             && !matches!(mode, FieldMode::Plain | FieldMode::Skip)
         {
-            return Err(syn::Error::new_spanned(
+            return Err(Error::new_spanned(
                 field,
                 format!(
                     "Redact serde for `{type_name}` field `{field_name}` cannot use a serialization adapter with a redaction mode that observes raw field state; use it only with `plain` or `skip`",
@@ -256,7 +256,7 @@ impl SerdeAttributes {
 }
 
 /// Returns whether one field control affects deserialization only.
-fn is_deserialize_only_control(meta: &syn::meta::ParseNestedMeta<'_>) -> bool {
+fn is_deserialize_only_control(meta: &ParseNestedMeta<'_>) -> bool {
     meta.path.is_ident("default")
         || meta.path.is_ident("alias")
         || meta.path.is_ident("skip_deserializing")
@@ -266,13 +266,11 @@ fn is_deserialize_only_control(meta: &syn::meta::ParseNestedMeta<'_>) -> bool {
 }
 
 /// Consumes one supported deserialization-only field control.
-fn parse_deserialize_only_control(
-    meta: &syn::meta::ParseNestedMeta<'_>,
-) -> syn::Result<()> {
+fn parse_deserialize_only_control(meta: &ParseNestedMeta<'_>) -> Result<()> {
     if meta.path.is_ident("skip_deserializing")
         || meta.path.is_ident("deserialize_in_place")
     {
-        if meta.input.peek(Token![=]) || meta.input.peek(syn::token::Paren) {
+        if meta.input.peek(Token![=]) || meta.input.peek(Paren) {
             return Err(
                 meta.error("Redact serde expects a bare deserialization-only field control")
             );

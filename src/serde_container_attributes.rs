@@ -7,18 +7,16 @@
 // =============================================================================
 //! Whitelisted Serde container attributes for redacted serialization.
 
-use syn::{
-    DeriveInput,
-    LitStr,
-    spanned::Spanned,
-};
+use syn::DeriveInput;
+use syn::Error;
+use syn::LitStr;
+use syn::Path;
+use syn::Result;
+use syn::spanned::Spanned;
 
-use crate::{
-    internal::SerdeContainerAttributeParser,
-    serde_enum_representation::SerdeEnumRepresentation,
-    serde_rename_rule::SerdeRenameRule,
-};
-
+use crate::internal::SerdeContainerAttributeParser;
+use crate::serde_enum_representation::SerdeEnumRepresentation;
+use crate::serde_rename_rule::SerdeRenameRule;
 /// Validated names, rename rules, and enum representation.
 #[must_use]
 pub(crate) struct SerdeContainerAttributes {
@@ -49,10 +47,7 @@ impl SerdeContainerAttributes {
     /// Returns a targeted error for unsupported attributes, duplicates,
     /// invalid representation combinations, or enum-only controls on structs.
     #[inline(always)]
-    pub(crate) fn parse(
-        input: &DeriveInput,
-        enabled: bool,
-    ) -> syn::Result<Self> {
+    pub(crate) fn parse(input: &DeriveInput, enabled: bool) -> Result<Self> {
         SerdeContainerAttributeParser::parse(input, enabled)
     }
 
@@ -83,8 +78,8 @@ impl SerdeContainerAttributes {
         rename_all_fields: Option<SerdeRenameRule>,
         tag: Option<LitStr>,
         content: Option<LitStr>,
-        untagged: Option<syn::Path>,
-    ) -> syn::Result<Self> {
+        untagged: Option<Path>,
+    ) -> Result<Self> {
         let representation = representation(input, tag, content, untagged)?;
         Ok(Self {
             name: name.unwrap_or_else(|| input.ident.to_string()),
@@ -168,11 +163,11 @@ fn representation(
     input: &DeriveInput,
     tag: Option<LitStr>,
     content: Option<LitStr>,
-    untagged: Option<syn::Path>,
-) -> syn::Result<SerdeEnumRepresentation> {
+    untagged: Option<Path>,
+) -> Result<SerdeEnumRepresentation> {
     if let Some(path) = untagged {
         if tag.is_some() || content.is_some() {
-            return Err(syn::Error::new(
+            return Err(Error::new(
                 path.span(),
                 format!(
                     "Redact serde for `{}` cannot combine `untagged` with `tag` or `content`",
@@ -184,7 +179,7 @@ fn representation(
     }
     match (tag, content) {
         (None, None) => Ok(SerdeEnumRepresentation::ExternallyTagged),
-        (None, Some(content)) => Err(syn::Error::new_spanned(
+        (None, Some(content)) => Err(Error::new_spanned(
             content,
             format!(
                 "Redact serde for `{}` requires `tag` when `content` is present",
@@ -196,7 +191,7 @@ fn representation(
         }
         (Some(tag), Some(content)) => {
             if tag.value() == content.value() {
-                return Err(syn::Error::new_spanned(
+                return Err(Error::new_spanned(
                     content,
                     format!(
                         "Redact serde for `{}` requires distinct `tag` and `content` names",

@@ -9,7 +9,6 @@
 
 use qubit_redact::Redact as _;
 use qubit_redact_derive::Redact;
-
 /// Record with redacted, conditional, and always-skipped carriers.
 #[derive(Redact)]
 #[redact(serde)]

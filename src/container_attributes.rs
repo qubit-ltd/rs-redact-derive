@@ -7,11 +7,12 @@
 // =============================================================================
 //! Strict parsing boundary for container-level `redact` attributes.
 
-use syn::{
-    DeriveInput,
-    Meta,
-    Token,
-};
+use syn::DeriveInput;
+use syn::Error;
+use syn::Meta;
+use syn::Result;
+use syn::Token;
+use syn::token::Paren;
 
 /// Parsed container controls for optional redacted serde integration.
 #[must_use]
@@ -44,7 +45,7 @@ impl ContainerAttributes {
     ///
     /// Returns a targeted error for malformed, repeated, or unsupported
     /// container controls.
-    pub(crate) fn parse(input: &DeriveInput) -> syn::Result<Self> {
+    pub(crate) fn parse(input: &DeriveInput) -> Result<Self> {
         let mut debug = false;
         let mut display = false;
         let mut serde = false;
@@ -55,7 +56,7 @@ impl ContainerAttributes {
                 continue;
             }
             let Meta::List(list) = &attribute.meta else {
-                return Err(syn::Error::new_spanned(
+                return Err(Error::new_spanned(
                     attribute,
                     format!(
                         "Redact derive for `{}` expects `#[redact(debug, display, serde, no_mut, require_explicit)]` on the container",
@@ -64,7 +65,7 @@ impl ContainerAttributes {
                 ));
             };
             if list.tokens.is_empty() {
-                return Err(syn::Error::new_spanned(
+                return Err(Error::new_spanned(
                     attribute,
                     format!(
                         "Redact derive for `{}` does not allow an empty container attribute; use \
@@ -92,7 +93,7 @@ impl ContainerAttributes {
                         input.ident,
                     )));
                 };
-                if meta.input.peek(Token![=]) || meta.input.peek(syn::token::Paren) {
+                if meta.input.peek(Token![=]) || meta.input.peek(Paren) {
                     let name = meta
                         .path
                         .segments

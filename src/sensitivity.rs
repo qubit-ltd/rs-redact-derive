@@ -8,15 +8,13 @@
 //! Strict derive-side representation of supported sensitivity spellings.
 
 use proc_macro2::TokenStream;
-use quote::{
-    format_ident,
-    quote,
-};
-use syn::{
-    Ident,
-    LitStr,
-    Path,
-};
+use quote::format_ident;
+use quote::quote;
+use syn::Error;
+use syn::Ident;
+use syn::LitStr;
+use syn::Path;
+use syn::Result;
 
 /// Validated sensitivity level used to generate a runtime variant path.
 #[must_use]
@@ -46,7 +44,7 @@ impl Sensitivity {
         literal: &LitStr,
         type_name: &Ident,
         field_name: &str,
-    ) -> syn::Result<Self> {
+    ) -> Result<Self> {
         match literal.value().as_str() {
             "low" => Ok(Self {
                 runtime_variant: "Low",
@@ -60,7 +58,7 @@ impl Sensitivity {
             "secret" => Ok(Self {
                 runtime_variant: "Secret",
             }),
-            value => Err(syn::Error::new_spanned(
+            value => Err(Error::new_spanned(
                 literal,
                 format!(
                     "Redact derive for `{type_name}` field `{field_name}` has unknown level \

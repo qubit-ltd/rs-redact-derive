@@ -11,23 +11,16 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Ident;
 use syn::Path;
+use syn::Result;
 
-use crate::{
-    internal::{
-        FieldsData,
-        VariantData,
-    },
-    serde_container_attributes::SerdeContainerAttributes,
-    serde_enum_representation::SerdeEnumRepresentation,
-};
-
-use super::{
-    adjacently_tagged::adjacent_variant_arm,
-    externally_tagged::external_variant_arm,
-    internally_tagged::internal_variant_arm,
-    untagged::untagged_variant_arm,
-};
-
+use super::adjacently_tagged::adjacent_variant_arm;
+use super::externally_tagged::external_variant_arm;
+use super::internally_tagged::internal_variant_arm;
+use super::untagged::untagged_variant_arm;
+use crate::internal::FieldsData;
+use crate::internal::VariantData;
+use crate::serde_container_attributes::SerdeContainerAttributes;
+use crate::serde_enum_representation::SerdeEnumRepresentation;
 /// Generates redacted serialization for an enum representation.
 ///
 /// # Parameters
@@ -47,13 +40,13 @@ use super::{
 /// Returns an error when the selected representation is incompatible with a
 /// variant shape or serialized field name.
 pub(super) fn enum_body(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     variants: &[VariantData<'_>],
     runtime: &Path,
     serde: &Path,
     container_attributes: &SerdeContainerAttributes,
     serializer: &Ident,
-) -> syn::Result<TokenStream> {
+) -> Result<TokenStream> {
     let arms = variants
         .iter()
         .map(|variant| {
@@ -100,7 +93,7 @@ pub(super) fn enum_body(
                 ),
             }
         })
-        .collect::<syn::Result<Vec<_>>>()?;
+        .collect::<Result<Vec<_>>>()?;
     Ok(quote! {
         match self {
             #(#arms),*

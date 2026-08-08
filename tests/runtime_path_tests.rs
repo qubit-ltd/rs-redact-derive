@@ -7,11 +7,8 @@
 // =============================================================================
 //! Black-box tests for runtime path resolution.
 
-use std::{
-    env,
-    path::PathBuf,
-};
-
+use std::env;
+use std::path::PathBuf;
 mod support;
 
 /// Verifies the ordinary direct runtime dependency resolves in expansion.

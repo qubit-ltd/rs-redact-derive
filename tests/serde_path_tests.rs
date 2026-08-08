@@ -7,11 +7,8 @@
 // =============================================================================
 //! Black-box tests for direct Serde path resolution.
 
-use std::{
-    env,
-    path::PathBuf,
-};
-
+use std::env;
+use std::path::PathBuf;
 mod support;
 
 /// Verifies the direct Serde dependency is usable by generated code.

@@ -9,7 +9,6 @@
 
 use qubit_redact::Redact as _;
 use qubit_redact_derive::Redact;
-
 /// Enum mixing retained and omitted named and tuple carriers.
 #[derive(Redact)]
 #[redact(serde)]

@@ -9,14 +9,11 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{
-    DeriveInput,
-    Generics,
-    Path,
-};
+use syn::DeriveInput;
+use syn::Generics;
+use syn::Path;
 
 use crate::container_attributes::ContainerAttributes;
-
 /// Generates the requested `Debug` and `Display` implementations.
 ///
 /// # Parameters

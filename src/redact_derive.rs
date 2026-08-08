@@ -9,12 +9,11 @@
 
 use proc_macro::TokenStream;
 use syn::DeriveInput;
+use syn::Error;
+use syn::parse;
 
-use crate::{
-    redact_expansion,
-    runtime_path,
-};
-
+use crate::redact_expansion;
+use crate::runtime_path;
 /// Parses and expands one `Redact` derive invocation.
 ///
 /// # Parameters
@@ -27,11 +26,11 @@ use crate::{
 /// errors are returned as targeted `compile_error!` tokens.
 #[inline]
 pub(crate) fn derive(input: TokenStream) -> TokenStream {
-    syn::parse::<DeriveInput>(input)
+    parse::<DeriveInput>(input)
         .and_then(|input| {
             runtime_path::resolve(&input)
                 .and_then(|runtime| redact_expansion::expand(&input, &runtime))
         })
-        .unwrap_or_else(syn::Error::into_compile_error)
+        .unwrap_or_else(Error::into_compile_error)
         .into()
 }

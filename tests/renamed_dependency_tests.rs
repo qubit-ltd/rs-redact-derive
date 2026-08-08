@@ -7,11 +7,8 @@
 // =============================================================================
 //! Verifies runtime dependency alias resolution.
 
-use std::{
-    env,
-    path::PathBuf,
-};
-
+use std::env;
+use std::path::PathBuf;
 mod support;
 
 /// Verifies generated code uses the Cargo dependency alias.

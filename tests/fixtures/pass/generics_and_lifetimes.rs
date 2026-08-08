@@ -9,7 +9,8 @@
 
 use std::fmt::Debug;
 
-use qubit_redact::{Redact as RedactTrait, RedactMut as RedactMutTrait};
+use qubit_redact::Redact as RedactTrait;
+use qubit_redact::RedactMut as RedactMutTrait;
 use qubit_redact_derive::Redact;
 
 /// Marker with no formatting or redaction capabilities.

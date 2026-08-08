@@ -8,14 +8,12 @@
 //! Serde-crate path resolution for generated implementations.
 
 use proc_macro_crate::crate_name;
-use syn::{
-    DeriveInput,
-    Path,
-    parse_quote,
-};
+use syn::DeriveInput;
+use syn::Path;
+use syn::Result;
+use syn::parse_quote;
 
 use crate::internal::crate_path;
-
 /// Resolves the serde path visible from the derive call site.
 ///
 /// # Parameters
@@ -30,7 +28,7 @@ use crate::internal::crate_path;
 ///
 /// Returns a targeted syntax error when serde is not a direct dependency.
 #[inline(always)]
-pub(crate) fn resolve(input: &DeriveInput) -> syn::Result<Path> {
+pub(crate) fn resolve(input: &DeriveInput) -> Result<Path> {
     crate_path::resolve(
         input,
         crate_name("serde"),

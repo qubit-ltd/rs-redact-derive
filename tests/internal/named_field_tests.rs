@@ -8,7 +8,6 @@
 //! Black-box tests for parsed named-field state.
 
 use crate::support;
-
 /// Verifies parsed named fields retain names and controls.
 #[test]
 fn test_named_field_retains_name_and_controls() {

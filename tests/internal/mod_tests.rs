@@ -8,7 +8,6 @@
 //! Black-box tests for internal model composition.
 
 use crate::support;
-
 /// Verifies internal model components compose for an enum.
 #[test]
 fn test_internal_model_components_compose() {

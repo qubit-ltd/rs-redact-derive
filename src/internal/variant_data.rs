@@ -9,11 +9,8 @@
 
 use syn::Variant;
 
-use crate::{
-    internal::FieldsData,
-    serde_variant_attributes::SerdeVariantAttributes,
-};
-
+use crate::internal::FieldsData;
+use crate::serde_variant_attributes::SerdeVariantAttributes;
 /// One enum variant with its declaration index and validated fields.
 ///
 /// # Type Parameters

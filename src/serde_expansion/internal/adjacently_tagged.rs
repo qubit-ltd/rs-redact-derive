@@ -9,28 +9,18 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::Ident;
 use syn::Path;
+use syn::Result;
 
-use crate::{
-    internal::{
-        FieldsData,
-        VariantData,
-    },
-    serde_container_attributes::SerdeContainerAttributes,
-};
-
-use super::{
-    naming::{
-        named_content_proxy,
-        serialized_variant_name,
-        tuple_content_proxy,
-    },
-    variant_fields::{
-        enum_named_parts,
-        enum_unnamed_parts,
-    },
-};
-
+use super::naming::named_content_proxy;
+use super::naming::serialized_variant_name;
+use super::naming::tuple_content_proxy;
+use super::variant_fields::enum_named_parts;
+use super::variant_fields::enum_unnamed_parts;
+use crate::internal::FieldsData;
+use crate::internal::VariantData;
+use crate::serde_container_attributes::SerdeContainerAttributes;
 /// Generates one adjacently tagged variant arm.
 ///
 /// # Parameters
@@ -52,14 +42,14 @@ use super::{
 /// This function currently produces no direct error; the result type matches
 /// the representation-dispatch interface.
 pub(super) fn adjacent_variant_arm(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     variant: &VariantData<'_>,
     runtime: &Path,
     serde: &Path,
     container_attributes: &SerdeContainerAttributes,
     tag: &str,
     content: &str,
-) -> syn::Result<TokenStream> {
+) -> Result<TokenStream> {
     let rust_name = &variant.variant().ident;
     let variant_name = serialized_variant_name(variant, container_attributes);
     let enum_name = container_attributes.name();

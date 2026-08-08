@@ -8,25 +8,18 @@
 //! Field-scoped capability assertions for generated implementations.
 
 use proc_macro2::TokenStream;
-use quote::{
-    format_ident,
-    quote_spanned,
-};
-use syn::{
-    Field,
-    GenericParam,
-    Ident,
-    LifetimeParam,
-    Path,
-    spanned::Spanned,
-};
+use quote::format_ident;
+use quote::quote_spanned;
+use syn::Field;
+use syn::GenericParam;
+use syn::Ident;
+use syn::LifetimeParam;
+use syn::Path;
+use syn::spanned::Spanned;
 
-use crate::{
-    field_mode::FieldMode,
-    generic_bounds,
-    immutable_trait_name::ImmutableTraitName,
-};
-
+use crate::field_mode::FieldMode;
+use crate::generic_bounds;
+use crate::immutable_trait_name::ImmutableTraitName;
 /// Generates the immutable capability assertion for one field.
 ///
 /// The helper name carries the owning type, field, and required trait so that

@@ -7,11 +7,11 @@
 // =============================================================================
 //! Strict parsing for Serde serialization/deserialization name pairs.
 
-use syn::{
-    LitStr,
-    Token,
-    meta::ParseNestedMeta,
-};
+use syn::LitStr;
+use syn::Result;
+use syn::Token;
+use syn::meta::ParseNestedMeta;
+use syn::token::Paren;
 
 /// Parses a Serde name in string or directional list form.
 ///
@@ -21,11 +21,11 @@ use syn::{
 pub(crate) fn parse_serialize_name(
     meta: &ParseNestedMeta<'_>,
     control: &str,
-) -> syn::Result<Option<LitStr>> {
+) -> Result<Option<LitStr>> {
     if meta.input.peek(Token![=]) {
         return Ok(Some(meta.value()?.parse()?));
     }
-    if !meta.input.peek(syn::token::Paren) {
+    if !meta.input.peek(Paren) {
         return Err(meta.error(format!(
             "Redact serde expects `{control} = \"...\"` or `{control}(serialize = \"...\", deserialize = \"...\")`",
         )));
@@ -38,16 +38,16 @@ pub(crate) fn parse_serialize_name(
         item_seen = true;
         if direction.path.is_ident("serialize") {
             if serialize.is_some() {
-                return Err(direction.error(format!(
-                    "Redact serde `{control}` repeats `serialize`",
-                )));
+                return Err(
+                    direction.error(format!("Redact serde `{control}` repeats `serialize`",))
+                );
             }
             serialize = Some(direction.value()?.parse()?);
         } else if direction.path.is_ident("deserialize") {
             if deserialize_seen {
-                return Err(direction.error(format!(
-                    "Redact serde `{control}` repeats `deserialize`",
-                )));
+                return Err(
+                    direction.error(format!("Redact serde `{control}` repeats `deserialize`",))
+                );
             }
             let _: LitStr = direction.value()?.parse()?;
             deserialize_seen = true;

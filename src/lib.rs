@@ -33,7 +33,6 @@ mod serialization_context;
 mod unnamed_fields;
 
 use proc_macro::TokenStream;
-
 /// Derives immutable redacted formatting for a struct or enum.
 ///
 /// Named, tuple, and unit structs are accepted, as are enums with named,

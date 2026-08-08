@@ -9,7 +9,6 @@
 
 use qubit_redact::Redact as _;
 use qubit_redact_derive::Redact;
-
 /// Named struct with visible, secret, and omitted fields.
 #[derive(Redact)]
 #[redact(serde)]

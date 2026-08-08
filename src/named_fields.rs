@@ -7,17 +7,13 @@
 // =============================================================================
 //! Named-field attribute parsing shared by structs and enum variants.
 
-use syn::{
-    FieldsNamed,
-    Ident,
-};
+use syn::FieldsNamed;
+use syn::Ident;
+use syn::Result;
 
-use crate::{
-    field_attributes::FieldAttributes,
-    internal::NamedField,
-    serde_attributes::SerdeAttributes,
-};
-
+use crate::field_attributes::FieldAttributes;
+use crate::internal::NamedField;
+use crate::serde_attributes::SerdeAttributes;
 /// Validates and parses every named field in source order.
 ///
 /// # Type Parameters
@@ -47,7 +43,7 @@ pub(crate) fn parse<'a>(
     type_name: &Ident,
     serde_enabled: bool,
     require_explicit: bool,
-) -> syn::Result<Vec<NamedField<'a>>> {
+) -> Result<Vec<NamedField<'a>>> {
     fields
         .named
         .iter()

@@ -8,20 +8,15 @@
 //! Shared field-level serialization expressions and naming context.
 
 use proc_macro2::TokenStream;
-use quote::{
-    quote,
-    quote_spanned,
-};
-use syn::{
-    Path,
-    spanned::Spanned,
-};
+use quote::quote;
+use quote::quote_spanned;
+use syn::Field;
+use syn::Ident;
+use syn::Path;
+use syn::spanned::Spanned;
 
-use crate::{
-    field_assertion,
-    field_mode::FieldMode,
-};
-
+use crate::field_assertion;
+use crate::field_mode::FieldMode;
 /// Returns whether a field is omitted by redaction or Serde controls.
 ///
 /// # Parameters
@@ -78,8 +73,8 @@ pub(super) fn serialization_condition(
 ///
 /// The raw value, a redacted carrier, or an empty stream for an omitted field.
 pub(super) fn serialized_carrier(
-    type_name: &syn::Ident,
-    field: &syn::Field,
+    type_name: &Ident,
+    field: &Field,
     context: &str,
     mode: &FieldMode,
     runtime: &Path,
@@ -146,7 +141,7 @@ pub(super) fn serialized_carrier(
 ///
 /// The identifier text without a leading `r#`.
 #[inline]
-pub(super) fn raw_identifier(identifier: &syn::Ident) -> String {
+pub(super) fn raw_identifier(identifier: &Ident) -> String {
     identifier
         .to_string()
         .strip_prefix("r#")
@@ -166,7 +161,7 @@ pub(super) fn raw_identifier(identifier: &syn::Ident) -> String {
 /// A field name optionally prefixed by its owning variant.
 #[inline]
 pub(super) fn field_context(
-    variant_name: Option<&syn::Ident>,
+    variant_name: Option<&Ident>,
     variant_index: Option<u32>,
     field_name: &str,
 ) -> String {

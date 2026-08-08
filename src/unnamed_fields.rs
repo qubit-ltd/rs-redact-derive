@@ -7,18 +7,14 @@
 // =============================================================================
 //! Tuple-field attribute parsing shared by structs and enum variants.
 
-use syn::{
-    FieldsUnnamed,
-    Ident,
-    Index,
-};
+use syn::FieldsUnnamed;
+use syn::Ident;
+use syn::Index;
+use syn::Result;
 
-use crate::{
-    field_attributes::FieldAttributes,
-    internal::UnnamedField,
-    serde_attributes::SerdeAttributes,
-};
-
+use crate::field_attributes::FieldAttributes;
+use crate::internal::UnnamedField;
+use crate::serde_attributes::SerdeAttributes;
 /// Parses every unnamed field in source order.
 ///
 /// # Type Parameters
@@ -44,7 +40,7 @@ pub(crate) fn parse<'a>(
     type_name: &Ident,
     serde_enabled: bool,
     require_explicit: bool,
-) -> syn::Result<Vec<UnnamedField<'a>>> {
+) -> Result<Vec<UnnamedField<'a>>> {
     fields
         .unnamed
         .iter()

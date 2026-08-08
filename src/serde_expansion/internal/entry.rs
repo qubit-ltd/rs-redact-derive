@@ -9,30 +9,22 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{
-    DeriveInput,
-    Generics,
-    Path,
-};
+use syn::DeriveInput;
+use syn::Generics;
+use syn::Ident;
+use syn::Path;
+use syn::Result;
 
-use crate::{
-    field_assertion,
-    generic_bounds,
-    internal::{
-        ContainerData,
-        FieldsData,
-        VariantData,
-    },
-    serde_container_attributes::SerdeContainerAttributes,
-    serialization_context::SerializationContext,
-};
-
-use super::{
-    enum_expansion::enum_body,
-    field_serialization::field_context,
-    struct_expansion::struct_body,
-};
-
+use super::enum_expansion::enum_body;
+use super::field_serialization::field_context;
+use super::struct_expansion::struct_body;
+use crate::field_assertion;
+use crate::generic_bounds;
+use crate::internal::ContainerData;
+use crate::internal::FieldsData;
+use crate::internal::VariantData;
+use crate::serde_container_attributes::SerdeContainerAttributes;
+use crate::serialization_context::SerializationContext;
 /// Generates optional redacted serialization for every supported input shape.
 ///
 /// # Parameters
@@ -59,7 +51,7 @@ pub(crate) fn expand(
     serde: Option<&Path>,
     container_attributes: &SerdeContainerAttributes,
     model: &ContainerData<'_>,
-) -> syn::Result<TokenStream> {
+) -> Result<TokenStream> {
     let Some(serde) = serde else {
         return Ok(TokenStream::new());
     };
@@ -162,7 +154,7 @@ pub(crate) fn expand(
 ///
 /// Local helper functions for nested and map fields.
 fn serialization_assertions(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     model: &ContainerData<'_>,
     runtime: &Path,
     serde: &Path,
@@ -201,7 +193,7 @@ fn serialization_assertions(
 ///
 /// Local helper functions asserting nested and map serialization capabilities.
 fn fields_serialization_assertions(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     fields: &FieldsData<'_>,
     variant: Option<&VariantData<'_>>,
     runtime: &Path,

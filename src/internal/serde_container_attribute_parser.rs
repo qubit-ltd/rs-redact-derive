@@ -7,22 +7,22 @@
 // =============================================================================
 //! Parser for the supported Serde container attribute allowlist.
 
-use syn::{
-    Attribute,
-    Data,
-    DeriveInput,
-    Ident,
-    LitStr,
-    Meta,
-    Token,
-};
+use syn::Attribute;
+use syn::Data;
+use syn::DeriveInput;
+use syn::Error;
+use syn::Ident;
+use syn::LitStr;
+use syn::Meta;
+use syn::Path;
+use syn::Result;
+use syn::Token;
+use syn::meta::ParseNestedMeta;
+use syn::token::Paren;
 
-use crate::{
-    internal::parse_serialize_name,
-    serde_container_attributes::SerdeContainerAttributes,
-    serde_rename_rule::SerdeRenameRule,
-};
-
+use crate::internal::parse_serialize_name;
+use crate::serde_container_attributes::SerdeContainerAttributes;
+use crate::serde_rename_rule::SerdeRenameRule;
 /// Incremental state for Serde container attribute parsing.
 ///
 /// # Type Parameters
@@ -48,7 +48,7 @@ pub(crate) struct SerdeContainerAttributeParser<'input> {
     /// Optional adjacent enum content key.
     content: Option<LitStr>,
     /// Optional bare untagged attribute path.
-    untagged: Option<syn::Path>,
+    untagged: Option<Path>,
 }
 
 impl<'input> SerdeContainerAttributeParser<'input> {
@@ -76,7 +76,7 @@ impl<'input> SerdeContainerAttributeParser<'input> {
     pub(crate) fn parse(
         input: &'input DeriveInput,
         enabled: bool,
-    ) -> syn::Result<SerdeContainerAttributes> {
+    ) -> Result<SerdeContainerAttributes> {
         let mut parser = Self::new(input);
         parser.parse_attributes(enabled)?;
         parser.finish()
@@ -117,7 +117,7 @@ impl<'input> SerdeContainerAttributeParser<'input> {
     /// # Errors
     ///
     /// Returns the first malformed or unsupported Serde attribute error.
-    fn parse_attributes(&mut self, enabled: bool) -> syn::Result<()> {
+    fn parse_attributes(&mut self, enabled: bool) -> Result<()> {
         if !enabled {
             return Ok(());
         }
@@ -139,9 +139,9 @@ impl<'input> SerdeContainerAttributeParser<'input> {
     ///
     /// Returns an error when the attribute is not list-shaped or contains an
     /// unsupported nested control.
-    fn parse_attribute(&mut self, attribute: &Attribute) -> syn::Result<()> {
+    fn parse_attribute(&mut self, attribute: &Attribute) -> Result<()> {
         let Meta::List(_) = &attribute.meta else {
-            return Err(syn::Error::new_spanned(
+            return Err(Error::new_spanned(
                 attribute,
                 format!(
                     "Redact serde for `{}` expects `#[serde(...)]`",
@@ -164,8 +164,8 @@ impl<'input> SerdeContainerAttributeParser<'input> {
     /// controls.
     fn parse_nested_attribute(
         &mut self,
-        meta: syn::meta::ParseNestedMeta<'_>,
-    ) -> syn::Result<()> {
+        meta: ParseNestedMeta<'_>,
+    ) -> Result<()> {
         if meta.path.is_ident("rename") {
             parse_name(
                 &meta,
@@ -215,8 +215,8 @@ impl<'input> SerdeContainerAttributeParser<'input> {
     /// or repeated.
     fn parse_rename_all_fields(
         &mut self,
-        meta: syn::meta::ParseNestedMeta<'_>,
-    ) -> syn::Result<()> {
+        meta: ParseNestedMeta<'_>,
+    ) -> Result<()> {
         require_enum(&meta, self.input, "rename_all_fields")?;
         parse_rule(
             &meta,
@@ -237,10 +237,7 @@ impl<'input> SerdeContainerAttributeParser<'input> {
     ///
     /// Returns an error when the input is not an enum or the tag is invalid or
     /// repeated.
-    fn parse_tag(
-        &mut self,
-        meta: syn::meta::ParseNestedMeta<'_>,
-    ) -> syn::Result<()> {
+    fn parse_tag(&mut self, meta: ParseNestedMeta<'_>) -> Result<()> {
         require_enum(&meta, self.input, "tag")?;
         parse_literal(&meta, &self.input.ident, "tag", &mut self.tag)
     }
@@ -255,10 +252,7 @@ impl<'input> SerdeContainerAttributeParser<'input> {
     ///
     /// Returns an error when the input is not an enum or the content key is
     /// invalid or repeated.
-    fn parse_content(
-        &mut self,
-        meta: syn::meta::ParseNestedMeta<'_>,
-    ) -> syn::Result<()> {
+    fn parse_content(&mut self, meta: ParseNestedMeta<'_>) -> Result<()> {
         require_enum(&meta, self.input, "content")?;
         parse_literal(&meta, &self.input.ident, "content", &mut self.content)
     }
@@ -273,12 +267,9 @@ impl<'input> SerdeContainerAttributeParser<'input> {
     ///
     /// Returns an error when the input is not an enum, the control has a value,
     /// or the control is repeated.
-    fn parse_untagged(
-        &mut self,
-        meta: syn::meta::ParseNestedMeta<'_>,
-    ) -> syn::Result<()> {
+    fn parse_untagged(&mut self, meta: ParseNestedMeta<'_>) -> Result<()> {
         require_enum(&meta, self.input, "untagged")?;
-        if meta.input.peek(Token![=]) || meta.input.peek(syn::token::Paren) {
+        if meta.input.peek(Token![=]) || meta.input.peek(Paren) {
             return Err(meta.error(format!(
                 "Redact serde for `{}` requires bare `untagged`",
                 self.input.ident,
@@ -303,7 +294,7 @@ impl<'input> SerdeContainerAttributeParser<'input> {
     /// # Errors
     ///
     /// Returns the targeted error for an invalid enum representation.
-    fn finish(self) -> syn::Result<SerdeContainerAttributes> {
+    fn finish(self) -> Result<SerdeContainerAttributes> {
         SerdeContainerAttributes::from_parts(
             self.input,
             self.name,
@@ -329,10 +320,7 @@ impl<'input> SerdeContainerAttributeParser<'input> {
     ///
     /// Panics only if `syn` supplies a nested metadata path without any
     /// segments, which violates the `ParseNestedMeta` path invariant.
-    fn unsupported_control_error(
-        &self,
-        meta: syn::meta::ParseNestedMeta<'_>,
-    ) -> syn::Error {
+    fn unsupported_control_error(&self, meta: ParseNestedMeta<'_>) -> Error {
         let key = meta
             .path
             .segments
@@ -349,14 +337,14 @@ impl<'input> SerdeContainerAttributeParser<'input> {
 
 /// Parses a container `default` control that affects only deserialization.
 fn parse_deserialize_only_default(
-    meta: &syn::meta::ParseNestedMeta<'_>,
+    meta: &ParseNestedMeta<'_>,
     type_name: &Ident,
-) -> syn::Result<()> {
+) -> Result<()> {
     if meta.input.peek(Token![=]) {
         let _: LitStr = meta.value()?.parse()?;
         return Ok(());
     }
-    if meta.input.peek(syn::token::Paren) {
+    if meta.input.peek(Paren) {
         return Err(meta.error(format!(
             "Redact serde for `{type_name}` requires bare `default` or `default = \"...\"`"
         )));
@@ -366,11 +354,11 @@ fn parse_deserialize_only_default(
 
 /// Parses one bare container control that affects only deserialization.
 fn require_bare_deserialize_only(
-    meta: &syn::meta::ParseNestedMeta<'_>,
+    meta: &ParseNestedMeta<'_>,
     type_name: &Ident,
     name: &str,
-) -> syn::Result<()> {
-    if meta.input.peek(Token![=]) || meta.input.peek(syn::token::Paren) {
+) -> Result<()> {
+    if meta.input.peek(Token![=]) || meta.input.peek(Paren) {
         return Err(meta.error(format!(
             "Redact serde for `{type_name}` requires bare `{name}`"
         )));
@@ -390,10 +378,10 @@ fn require_bare_deserialize_only(
 ///
 /// Returns a targeted error when the derive input is not an enum.
 fn require_enum(
-    meta: &syn::meta::ParseNestedMeta<'_>,
+    meta: &ParseNestedMeta<'_>,
     input: &DeriveInput,
     name: &str,
-) -> syn::Result<()> {
+) -> Result<()> {
     if matches!(input.data, Data::Enum(_)) {
         Ok(())
     } else {
@@ -417,12 +405,12 @@ fn require_enum(
 ///
 /// Returns an error when the control is repeated or its value is not a string.
 fn parse_name(
-    meta: &syn::meta::ParseNestedMeta<'_>,
+    meta: &ParseNestedMeta<'_>,
     type_name: &Ident,
     name: &str,
     seen: &mut bool,
     output: &mut Option<String>,
-) -> syn::Result<()> {
+) -> Result<()> {
     if *seen {
         return Err(meta.error(format!(
             "Redact serde for `{type_name}` repeats `{name}`",
@@ -446,12 +434,12 @@ fn parse_name(
 ///
 /// Returns an error when the control is repeated or the rule is unsupported.
 fn parse_rule(
-    meta: &syn::meta::ParseNestedMeta<'_>,
+    meta: &ParseNestedMeta<'_>,
     type_name: &Ident,
     name: &str,
     seen: &mut bool,
     output: &mut Option<SerdeRenameRule>,
-) -> syn::Result<()> {
+) -> Result<()> {
     if *seen {
         return Err(meta.error(format!(
             "Redact serde for `{type_name}` repeats `{name}`",
@@ -477,11 +465,11 @@ fn parse_rule(
 ///
 /// Returns an error when the control is repeated or its value is not a string.
 fn parse_literal(
-    meta: &syn::meta::ParseNestedMeta<'_>,
+    meta: &ParseNestedMeta<'_>,
     type_name: &Ident,
     name: &str,
     output: &mut Option<LitStr>,
-) -> syn::Result<()> {
+) -> Result<()> {
     if output.is_some() {
         return Err(meta.error(format!(
             "Redact serde for `{type_name}` repeats `{name}`",

@@ -8,33 +8,22 @@
 //! Redacted serialization expansion for struct shapes.
 
 use proc_macro2::TokenStream;
-use quote::{
-    format_ident,
-    quote,
-    quote_spanned,
-};
-use syn::{
-    Path,
-    spanned::Spanned,
-};
+use quote::format_ident;
+use quote::quote;
+use quote::quote_spanned;
+use syn::Ident;
+use syn::Path;
+use syn::spanned::Spanned;
 
-use crate::{
-    internal::{
-        FieldsData,
-        NamedField,
-        UnnamedField,
-    },
-    serde_container_attributes::SerdeContainerAttributes,
-};
-
-use super::field_serialization::{
-    field_context,
-    field_is_skipped,
-    raw_identifier,
-    serialization_condition,
-    serialized_carrier,
-};
-
+use super::field_serialization::field_context;
+use super::field_serialization::field_is_skipped;
+use super::field_serialization::raw_identifier;
+use super::field_serialization::serialization_condition;
+use super::field_serialization::serialized_carrier;
+use crate::internal::FieldsData;
+use crate::internal::NamedField;
+use crate::internal::UnnamedField;
+use crate::serde_container_attributes::SerdeContainerAttributes;
 /// Generates redacted serialization for one struct shape.
 ///
 /// # Parameters
@@ -49,7 +38,7 @@ use super::field_serialization::{
 ///
 /// A serializer expression preserving the source struct shape.
 pub(super) fn struct_body(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     fields: &FieldsData<'_>,
     runtime: &Path,
     serde: &Path,
@@ -105,7 +94,7 @@ pub(super) fn struct_body(
 ///
 /// A `SerializeStruct` expression containing each selected field.
 fn named_struct_body(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     fields: &[NamedField<'_>],
     runtime: &Path,
     serde: &Path,
@@ -202,7 +191,7 @@ fn named_struct_body(
 ///
 /// A newtype serializer expression, or a unit-struct expression when omitted.
 fn newtype_struct_body(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     parsed: &UnnamedField<'_>,
     runtime: &Path,
     serde: &Path,
@@ -256,7 +245,7 @@ fn newtype_struct_body(
 ///
 /// A `SerializeTupleStruct` expression containing each selected field.
 fn tuple_struct_body(
-    type_name: &syn::Ident,
+    type_name: &Ident,
     fields: &[UnnamedField<'_>],
     runtime: &Path,
     serde: &Path,

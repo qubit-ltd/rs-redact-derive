@@ -8,7 +8,6 @@
 //! Black-box tests for named, tuple, and unit field-shape selection.
 
 use crate::support;
-
 /// Verifies tuple fields preserve their positional shape.
 #[test]
 fn test_fields_data_selects_tuple_shape() {

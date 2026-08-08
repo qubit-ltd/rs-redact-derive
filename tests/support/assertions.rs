@@ -11,14 +11,11 @@
 
 use std::collections::BTreeMap;
 
-use qubit_redact::{
-    Redact as _,
-    RedactMut as _,
-    RedactionPolicy,
-    Sensitivity,
-};
+use qubit_redact::Redact as _;
+use qubit_redact::RedactMut as _;
+use qubit_redact::RedactionPolicy;
+use qubit_redact::Sensitivity;
 use qubit_redact_derive::Redact;
-
 /// Named record covering plain, sensitive, skipped, and map fields.
 #[derive(Redact)]
 struct NamedRecord {

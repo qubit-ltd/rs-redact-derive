@@ -9,7 +9,6 @@
 
 use qubit_redact::Redact as _;
 use qubit_redact_derive::Redact;
-
 /// Borrowed record proving generated Serde implementations preserve generics.
 #[derive(Redact)]
 #[redact(serde)]

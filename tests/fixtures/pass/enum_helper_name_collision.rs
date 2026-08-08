@@ -9,7 +9,8 @@
 
 #![allow(non_camel_case_types)]
 
-use qubit_redact::{Redact as RedactTrait, RedactMut as RedactMutTrait};
+use qubit_redact::Redact as RedactTrait;
+use qubit_redact::RedactMut as RedactMutTrait;
 use qubit_redact_derive::Redact;
 
 /// Enum variants whose old helper contexts both became `foo_bar_baz`.

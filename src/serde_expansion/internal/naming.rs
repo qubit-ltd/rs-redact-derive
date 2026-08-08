@@ -8,17 +8,13 @@
 //! Serialized variant names and adjacent-content proxy generation.
 
 use proc_macro2::TokenStream;
-use quote::{
-    format_ident,
-    quote,
-};
+use quote::format_ident;
+use quote::quote;
+use syn::Ident;
 use syn::Path;
 
-use crate::{
-    internal::VariantData,
-    serde_container_attributes::SerdeContainerAttributes,
-};
-
+use crate::internal::VariantData;
+use crate::serde_container_attributes::SerdeContainerAttributes;
 /// Returns one variant's final serialized name.
 ///
 /// # Parameters
@@ -52,10 +48,10 @@ pub(super) fn serialized_variant_name(
 ///
 /// The proxy type definition and an expression constructing its value.
 pub(super) fn named_content_proxy(
-    variant_name: &syn::Ident,
+    variant_name: &Ident,
     serde: &Path,
     names: &[String],
-    carriers: &[syn::Ident],
+    carriers: &[Ident],
 ) -> (TokenStream, TokenStream) {
     let proxy = format_ident!("__QubitRedactAdjacent{variant_name}Content");
     if carriers.is_empty() {
@@ -155,9 +151,9 @@ pub(super) fn named_content_proxy(
 ///
 /// The proxy type definition and an expression constructing its value.
 pub(super) fn tuple_content_proxy(
-    variant_name: &syn::Ident,
+    variant_name: &Ident,
     serde: &Path,
-    carriers: &[syn::Ident],
+    carriers: &[Ident],
 ) -> (TokenStream, TokenStream) {
     let proxy = format_ident!("__QubitRedactAdjacent{variant_name}Content");
     if carriers.is_empty() {

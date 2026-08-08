@@ -8,7 +8,6 @@
 //! Trait-name suffixes used by generated capability assertions.
 
 use crate::field_mode::FieldMode;
-
 /// Supplies the trait-name suffixes used by generated helper identifiers.
 pub(crate) trait ImmutableTraitName {
     /// Returns the required immutable capability name.

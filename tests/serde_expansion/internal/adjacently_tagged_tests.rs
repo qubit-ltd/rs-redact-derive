@@ -9,7 +9,6 @@
 
 use qubit_redact::Redact as _;
 use qubit_redact_derive::Redact;
-
 /// Adjacently tagged enum covering content-bearing and empty variants.
 #[derive(Redact)]
 #[redact(serde)]

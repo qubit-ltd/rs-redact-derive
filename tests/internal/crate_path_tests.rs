@@ -10,23 +10,17 @@
 //! Direct source execution covers every Cargo lookup result, while isolated
 //! fixtures verify those outcomes through actual proc-macro invocation.
 
-use std::{
-    env,
-    ffi::OsString,
-    path::PathBuf,
-    process::Output,
-};
+use std::env;
+use std::ffi::OsString;
+use std::path::PathBuf;
+use std::process::Output;
 
-use proc_macro_crate::{
-    Error,
-    FoundCrate,
-};
+use proc_macro_crate::Error;
+use proc_macro_crate::FoundCrate;
 use quote::ToTokens;
-use syn::{
-    DeriveInput,
-    Path,
-    parse_quote,
-};
+use syn::DeriveInput;
+use syn::Path;
+use syn::parse_quote;
 
 #[path = "../../src/internal/crate_path.rs"]
 mod crate_path;
