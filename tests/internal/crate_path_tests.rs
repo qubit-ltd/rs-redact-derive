@@ -22,7 +22,7 @@ use syn::DeriveInput;
 use syn::Path;
 use syn::parse_quote;
 
-#[path = "../../src/internal/crate_path.rs"]
+#[path = "../../core/src/internal/crate_path.rs"]
 mod crate_path;
 
 /// Creates a minimal input with a stable span for direct crate-path tests.

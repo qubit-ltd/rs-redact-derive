@@ -17,6 +17,7 @@ use syn::Path;
 use syn::Result;
 use syn::spanned::Spanned;
 
+use crate::RedactOptions;
 use crate::container_attributes::ContainerAttributes;
 use crate::field_assertion;
 use crate::field_mode::FieldMode;
@@ -52,6 +53,29 @@ pub(crate) fn expand(
     runtime: &Path,
 ) -> Result<TokenStream> {
     let container_attributes = ContainerAttributes::parse(input)?;
+    expand_with_container_attributes(input, runtime, container_attributes)
+}
+
+/// Expands a redacted model using integrations supplied by a hosting macro.
+pub(crate) fn expand_with_options(
+    input: &DeriveInput,
+    runtime: &Path,
+    options: RedactOptions,
+) -> Result<TokenStream> {
+    let container_attributes = ContainerAttributes::from_options(
+        options.debug,
+        options.display,
+        options.serde,
+    );
+    expand_with_container_attributes(input, runtime, container_attributes)
+}
+
+/// Generates the implementation from already-validated container controls.
+fn expand_with_container_attributes(
+    input: &DeriveInput,
+    runtime: &Path,
+    container_attributes: ContainerAttributes,
+) -> Result<TokenStream> {
     let model = input_model::parse(
         input,
         "Redact",

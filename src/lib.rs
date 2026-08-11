@@ -7,32 +7,11 @@
 // =============================================================================
 //! Derive macros for `qubit-redact` domain objects.
 
-mod container_attributes;
-mod field_assertion;
-mod field_attributes;
-mod field_mode;
-mod format_expansion;
-mod generic_bounds;
-mod immutable_trait_name;
-mod input_model;
-mod internal;
-mod named_fields;
-mod redact_derive;
-mod redact_expansion;
-mod redact_mut_expansion;
-mod runtime_path;
-mod sensitivity;
-mod serde_attributes;
-mod serde_container_attributes;
-mod serde_enum_representation;
-mod serde_expansion;
-mod serde_path;
-mod serde_rename_rule;
-mod serde_variant_attributes;
-mod serialization_context;
-mod unnamed_fields;
-
 use proc_macro::TokenStream;
+use qubit_redact_derive_core::expand;
+use syn::Error;
+use syn::parse;
+
 /// Derives immutable redacted formatting for a struct or enum.
 ///
 /// Named, tuple, and unit structs are accepted, as are enums with named,
@@ -58,5 +37,8 @@ use proc_macro::TokenStream;
 #[proc_macro_derive(Redact, attributes(redact, serde))]
 #[inline(always)]
 pub fn derive_redact(input: TokenStream) -> TokenStream {
-    redact_derive::derive(input)
+    parse(input)
+        .and_then(|input| expand(&input))
+        .unwrap_or_else(Error::into_compile_error)
+        .into()
 }
