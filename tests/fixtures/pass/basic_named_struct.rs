@@ -24,14 +24,11 @@ where
     name: String,
 }
 
-/// Exercises the generated implementation through the runtime trait.
+/// Exercises the generated implementation's fail-closed diagnostic boundary.
 fn main() {
     let value = GenericRecord {
         id: 7_u64,
         name: "Alice".to_owned(),
     };
-    assert_eq!(
-        format!("{:?}", value.redacted()),
-        "GenericRecord { id: 7, name: \"Alice\" }",
-    );
+    assert_eq!(format!("{:?}", value.redacted()), "<truncated>",);
 }

@@ -10,7 +10,7 @@ error[E0277]: mutable redaction capability is not implemented for &'a str
    = help: the trait `RedactValueMut` is not implemented for `&'a str`
    = note: if this type only needs immutable redaction, add #[redact(no_mut)] to the derived type
 help: the trait `RedactValueMut` is implemented for `String`
-  --> $CARGO/qubit-redact-$VERSION/src/domain/redact_value_mut.rs
+  --> $QUBIT_REDACT/src/domain/redact_value_mut.rs
    |
    | impl RedactValueMut for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

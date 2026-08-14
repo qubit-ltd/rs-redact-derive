@@ -13,6 +13,15 @@ fn test_pass_fixtures() {
     trybuild::TestCases::new().pass("tests/fixtures/pass/*.rs");
 }
 
+/// Keeps nested and map fixtures as an explicit regression boundary for the
+/// generated mutable-session forwarding contract.
+#[test]
+fn test_mutable_session_forwarding_fixtures() {
+    let tests = trybuild::TestCases::new();
+    tests.pass("tests/fixtures/pass/nested_containers.rs");
+    tests.pass("tests/fixtures/pass/map_fields.rs");
+}
+
 /// Verifies that invalid attributes produce stable targeted diagnostics.
 #[test]
 fn test_compile_fail_fixtures() {

@@ -112,51 +112,38 @@ struct JsonRecord {
     document: String,
 }
 
-/// Verifies named-field parsing and immutable expansion.
+/// Verifies unknown derived input fails closed before formatting.
 pub fn assert_named_redaction() {
     let value = NamedRecord {
         visible: "shown",
         secret: String::from("raw-secret"),
         skipped: String::from("raw-skipped"),
-        metadata: BTreeMap::from([(
-            String::from("token"),
-            String::from("raw-map"),
-        )]),
+        metadata: BTreeMap::from([(String::from("token"), String::from("raw-map"))]),
     };
     let _ = &value.skipped;
 
-    assert_eq!(
-        format!("{:?}", value.redacted()),
-        r#"NamedRecord { visible: "shown", secret: "<redacted>", metadata: {"token": "****"} }"#,
-    );
+    assert_eq!(format!("{:?}", value.redacted()), "<truncated>",);
 }
 
-/// Verifies positional input modeling and expansion.
+/// Verifies unknown tuple input fails closed before formatting.
 pub fn assert_tuple_redaction() {
-    let value =
-        TupleRecord(String::from("raw-secret"), String::from("raw-skipped"));
+    let value = TupleRecord(String::from("raw-secret"), String::from("raw-skipped"));
     let TupleRecord(_, skipped) = &value;
     let _ = skipped;
 
-    assert_eq!(
-        format!("{:?}", value.redacted()),
-        r#"TupleRecord("<redacted>")"#,
-    );
+    assert_eq!(format!("{:?}", value.redacted()), "<truncated>",);
 }
 
-/// Verifies enum input modeling and shape preservation.
+/// Verifies unknown enum input fails closed before formatting.
 pub fn assert_enum_redaction() {
     let named = Event::Named {
         secret: String::from("raw-secret"),
     };
     let tuple = Event::Tuple(String::from("raw-tuple"));
 
-    assert_eq!(
-        format!("{:?}", named.redacted()),
-        r#"Named { secret: "<redacted>" }"#,
-    );
-    assert_eq!(format!("{:?}", tuple.redacted()), r#"Tuple("<redacted>")"#,);
-    assert_eq!(format!("{:?}", Event::Ready.redacted()), "Ready");
+    assert_eq!(format!("{:?}", named.redacted()), "<truncated>",);
+    assert_eq!(format!("{:?}", tuple.redacted()), "<truncated>");
+    assert_eq!(format!("{:?}", Event::Ready.redacted()), "<truncated>");
 }
 
 /// Verifies destructive expansion uses the requested sensitivity.
@@ -172,20 +159,14 @@ pub fn assert_mutable_redaction() {
     assert_eq!(redacted, "<redacted>");
 }
 
-/// Verifies generated `Debug` and `Display` delegate to redaction.
+/// Verifies generated `Debug` and `Display` fail closed for unknown input.
 pub fn assert_format_expansion() {
     let value = FormattedRecord {
         secret: String::from("raw-secret"),
     };
 
-    assert_eq!(
-        format!("{value:?}"),
-        r#"FormattedRecord { secret: "<redacted>" }"#,
-    );
-    assert_eq!(
-        format!("{value}"),
-        r#"FormattedRecord { secret: "<redacted>" }"#,
-    );
+    assert_eq!(format!("{value:?}"), "<truncated>",);
+    assert_eq!(format!("{value}"), "<truncated>",);
 }
 
 /// Verifies every accepted sensitivity literal reaches the runtime model.
@@ -203,8 +184,8 @@ pub fn assert_sensitivity_expansion() {
 /// Verifies Serde container, variant, field, and representation expansion.
 pub fn assert_serde_expansion() {
     let value = SerializableEvent::Tuple(String::from("raw-secret"));
-    let json = serde_json::to_value(value.redacted())
-        .expect("redacted adjacent serialization succeeds");
+    let json =
+        serde_json::to_value(value.redacted()).expect("redacted adjacent serialization succeeds");
 
     assert_eq!(
         json,

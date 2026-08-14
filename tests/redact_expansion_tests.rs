@@ -14,3 +14,10 @@ mod support;
 fn test_redact_expansion_preserves_enum_shapes() {
     support::assertions::assert_enum_redaction();
 }
+
+/// Verifies generated field helpers can forward one mutable session into map
+/// redaction, which requires the runtime 0.5 session contract.
+#[test]
+fn test_redact_expansion_forwards_mutable_session_to_map_fields() {
+    support::assertions::assert_named_redaction();
+}

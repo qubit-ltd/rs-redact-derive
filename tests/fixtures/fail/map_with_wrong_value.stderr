@@ -29,24 +29,6 @@ note: required by a bound in `__qubit_redact_Metrics_values_requires_RedactMapVa
    |     ------------------------------------------------- required by a bound in this function
    = note: this error originates in the derive macro `Redact` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: the trait bound `u64: RedactValue` is not satisfied
-  --> tests/fixtures/fail/map_with_wrong_value.rs:17:5
-   |
-17 |     /// Map redaction requires supported text values.
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `RedactValue` is not implemented for `u64`
-   |
-   = help: the following other types implement trait `RedactValue`:
-             &str
-             Cow<'_, str>
-             Option<&str>
-             Option<Cow<'_, str>>
-             Option<String>
-             String
-             str
-   = note: required for `HashMap<String, u64>` to implement `RedactMapValue<String, u64>`
-   = note: required for `RedactedMapSession<'_, '_, '_, HashMap<String, u64>, String, u64>` to implement `Debug`
-   = note: required for the cast from `&RedactedMapSession<'_, '_, '_, HashMap<String, u64>, String, u64>` to `&dyn Debug`
-
 error[E0277]: the trait bound `u64: RedactValueMut` is not satisfied
   --> tests/fixtures/fail/map_with_wrong_value.rs:15:10
    |
@@ -57,7 +39,7 @@ error[E0277]: the trait bound `u64: RedactValueMut` is not satisfied
    |     ------------------------------------------------- required by a bound introduced by this call
    |
 help: the following other types implement trait `RedactValueMut`
-  --> $CARGO/qubit-redact-$VERSION/src/domain/redact_value_mut.rs
+  --> $QUBIT_REDACT/src/domain/redact_value_mut.rs
    |
    | impl RedactValueMut for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `String`

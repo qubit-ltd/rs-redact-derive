@@ -23,18 +23,6 @@ note: required by a bound in `__qubit_redact_Record_values_requires_RedactMapVal
    |     ------------------------------------------------------------ required by a bound in this function
    = note: this error originates in the derive macro `Redact` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0271]: type mismatch resolving `<&Vec<String> as IntoIterator>::Item == (&_, &_)`
-  --> tests/fixtures/fail/map_without_map_trait.rs:15:5
-   |
-15 |     /// A vector does not expose string key/value map iteration.
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(&_, &_)`, found `&String`
-   |
-   = note:  expected tuple `(&_, &_)`
-           found reference `&String`
-   = note: required for `Vec<String>` to implement `RedactMapValue<_, _>`
-   = note: required for `RedactedMapSession<'_, '_, '_, Vec<String>, _, _>` to implement `Debug`
-   = note: required for the cast from `&RedactedMapSession<'_, '_, '_, Vec<String>, _, _>` to `&dyn Debug`
-
 error[E0271]: type mismatch resolving `<&mut Vec<String> as IntoIterator>::Item == (&_, &mut _)`
   --> tests/fixtures/fail/map_without_map_trait.rs:13:10
    |
