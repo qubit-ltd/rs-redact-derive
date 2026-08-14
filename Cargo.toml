@@ -36,7 +36,7 @@ proc-macro = true
 test = false
 
 [dependencies]
-qubit-redact-derive-core = { path = "core" }
+qubit-redact-derive-core = { version = "0.4.1", path = "core" }
 proc-macro-crate = "3"
 proc-macro2 = "1"
 quote = "1"
