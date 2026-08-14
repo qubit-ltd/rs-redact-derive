@@ -34,8 +34,7 @@ pub(crate) fn expand(
     generics: &Generics,
 ) -> TokenStream {
     let name = &input.ident;
-    let (impl_generics, type_generics, where_clause) =
-        generics.split_for_impl();
+    let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
     let debug_impl = attributes.debug_enabled().then(|| {
         quote! {
             impl #impl_generics ::core::fmt::Debug for #name #type_generics #where_clause {

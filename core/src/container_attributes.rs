@@ -31,11 +31,7 @@ pub(crate) struct ContainerAttributes {
 
 impl ContainerAttributes {
     /// Creates options supplied programmatically by a hosting macro.
-    pub(crate) const fn from_options(
-        debug: bool,
-        display: bool,
-        serde: bool,
-    ) -> Self {
+    pub(crate) const fn from_options(debug: bool, display: bool, serde: bool) -> Self {
         Self {
             debug,
             display,

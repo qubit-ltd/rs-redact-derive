@@ -92,10 +92,7 @@ pub(crate) fn add_mutable_bounds(
         FieldMode::Nested => {
             add_trait_bound(generics, field, quote!(#runtime::RedactMut));
         }
-        FieldMode::Plain
-        | FieldMode::Skip
-        | FieldMode::Map
-        | FieldMode::Json => {}
+        FieldMode::Plain | FieldMode::Skip | FieldMode::Map | FieldMode::Json => {}
     });
 }
 
@@ -133,10 +130,7 @@ pub(crate) fn add_serialization_bounds(
                 quote!(#runtime::__private::RedactSerialize),
             );
         }
-        FieldMode::Plain
-        | FieldMode::Skip
-        | FieldMode::Map
-        | FieldMode::Json => {}
+        FieldMode::Plain | FieldMode::Skip | FieldMode::Map | FieldMode::Json => {}
     });
 }
 
@@ -185,11 +179,7 @@ fn for_each_fields(
 }
 
 /// Adds one trait predicate when the field type uses an input type parameter.
-fn add_trait_bound(
-    generics: &mut Generics,
-    field: &Field,
-    trait_path: TokenStream,
-) {
+fn add_trait_bound(generics: &mut Generics, field: &Field, trait_path: TokenStream) {
     if !uses_type_parameter(generics, &field.ty) {
         return;
     }
@@ -208,10 +198,7 @@ fn add_trait_bound(
 }
 
 /// Returns whether a field type contains an input type parameter identifier.
-fn uses_type_parameter(
-    generics: &Generics,
-    field_type: &impl ToTokens,
-) -> bool {
+fn uses_type_parameter(generics: &Generics, field_type: &impl ToTokens) -> bool {
     let parameters: Vec<String> = generics
         .params
         .iter()
@@ -230,17 +217,10 @@ fn uses_type_parameter(
 /// The returned generics retain only parameters and where predicates needed by
 /// the field. Generated local carrier items can therefore introduce their own
 /// generic parameters instead of capturing the surrounding impl's parameters.
-pub(crate) fn generics_for_field(
-    generics: &Generics,
-    field_type: &Type,
-) -> Generics {
+pub(crate) fn generics_for_field(generics: &Generics, field_type: &Type) -> Generics {
     let parameter_names = generic_parameter_names(generics);
     let mut used = BTreeSet::new();
-    collect_parameter_names(
-        field_type.to_token_stream(),
-        &parameter_names,
-        &mut used,
-    );
+    collect_parameter_names(field_type.to_token_stream(), &parameter_names, &mut used);
 
     loop {
         let mut changed = false;
@@ -248,8 +228,7 @@ pub(crate) fn generics_for_field(
             for predicate in &where_clause.predicates {
                 let names = parameter_names_in(predicate, &parameter_names);
                 if names.iter().any(|name| used.contains(name)) {
-                    changed |=
-                        names.iter().any(|name| used.insert(name.clone()));
+                    changed |= names.iter().any(|name| used.insert(name.clone()));
                 }
             }
         }
@@ -325,17 +304,12 @@ fn generic_parameter_name(parameter: &GenericParam) -> String {
     match parameter {
         GenericParam::Type(parameter) => parameter.ident.to_string(),
         GenericParam::Const(parameter) => parameter.ident.to_string(),
-        GenericParam::Lifetime(parameter) => {
-            parameter.lifetime.ident.to_string()
-        }
+        GenericParam::Lifetime(parameter) => parameter.lifetime.ident.to_string(),
     }
 }
 
 /// Returns generic names used by one token stream.
-fn parameter_names_in(
-    tokens: &impl ToTokens,
-    candidates: &BTreeSet<String>,
-) -> BTreeSet<String> {
+fn parameter_names_in(tokens: &impl ToTokens, candidates: &BTreeSet<String>) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
     collect_parameter_names(tokens.to_token_stream(), candidates, &mut names);
     names
@@ -364,18 +338,13 @@ fn collect_parameter_names(
 }
 
 /// Searches a field type's token stream for an input type parameter.
-fn token_stream_uses_parameter(
-    tokens: TokenStream,
-    parameters: &[String],
-) -> bool {
+fn token_stream_uses_parameter(tokens: TokenStream, parameters: &[String]) -> bool {
     tokens.into_iter().any(|token| match token {
         TokenTree::Ident(identifier) => {
             let name = identifier.to_string();
             parameters.iter().any(|parameter| parameter == &name)
         }
-        TokenTree::Group(group) => {
-            token_stream_uses_parameter(group.stream(), parameters)
-        }
+        TokenTree::Group(group) => token_stream_uses_parameter(group.stream(), parameters),
         TokenTree::Punct(_) | TokenTree::Literal(_) => false,
     })
 }

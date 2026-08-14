@@ -53,18 +53,10 @@ pub(crate) fn parse<'a>(
                 .as_ref()
                 .expect("syn named fields always have identifiers");
             let field_name = identifier.to_string();
-            let attributes = FieldAttributes::parse(
-                field,
-                type_name,
-                &field_name,
-                require_explicit,
-            )?;
-            let serde_attributes = SerdeAttributes::parse(
-                field,
-                type_name,
-                &field_name,
-                serde_enabled,
-            )?;
+            let attributes =
+                FieldAttributes::parse(field, type_name, &field_name, require_explicit)?;
+            let serde_attributes =
+                SerdeAttributes::parse(field, type_name, &field_name, serde_enabled)?;
             serde_attributes.validate_redaction_mode(
                 field,
                 type_name,

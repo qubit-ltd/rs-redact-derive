@@ -55,10 +55,7 @@ pub(super) fn enum_named_parts(
 ) {
     let patterns = fields.iter().map(|parsed| {
         let identifier = parsed.identifier();
-        if field_is_skipped(
-            parsed.attributes().mode(),
-            parsed.serde_attributes(),
-        ) {
+        if field_is_skipped(parsed.attributes().mode(), parsed.serde_attributes()) {
             quote!(#identifier: _)
         } else {
             quote!(#identifier)
@@ -69,17 +66,13 @@ pub(super) fn enum_named_parts(
     let mut names = Vec::new();
     let mut carriers = Vec::new();
     for (position, parsed) in fields.iter().enumerate() {
-        if field_is_skipped(
-            parsed.attributes().mode(),
-            parsed.serde_attributes(),
-        ) {
+        if field_is_skipped(parsed.attributes().mode(), parsed.serde_attributes()) {
             continue;
         }
         let field = parsed.field();
         let identifier = parsed.identifier();
         let raw_name = raw_identifier(identifier);
-        let container_name =
-            container_attributes.rename_variant_field(&raw_name);
+        let container_name = container_attributes.rename_variant_field(&raw_name);
         let default_name = variant
             .serde_attributes()
             .rename_field(&raw_name, container_name);
@@ -88,8 +81,7 @@ pub(super) fn enum_named_parts(
             .rename()
             .map_or(default_name, str::to_owned);
         let raw = quote_spanned!(field.span()=> #identifier);
-        let context =
-            field_context(Some(variant_name), Some(variant.index()), &raw_name);
+        let context = field_context(Some(variant_name), Some(variant.index()), &raw_name);
         let carrier = format_ident!("__qubit_redact_serialized_{position}");
         let value = serialized_carrier(
             type_name,
@@ -153,10 +145,7 @@ pub(super) fn enum_unnamed_parts(
         })
         .collect::<Vec<_>>();
     let patterns = fields.iter().zip(&bindings).map(|(parsed, binding)| {
-        if field_is_skipped(
-            parsed.attributes().mode(),
-            parsed.serde_attributes(),
-        ) {
+        if field_is_skipped(parsed.attributes().mode(), parsed.serde_attributes()) {
             quote!(_)
         } else {
             quote!(#binding)
@@ -165,19 +154,13 @@ pub(super) fn enum_unnamed_parts(
     let mut setups = Vec::new();
     let mut conditions = Vec::new();
     let mut carriers = Vec::new();
-    for (position, (parsed, binding)) in
-        fields.iter().zip(&bindings).enumerate()
-    {
-        if field_is_skipped(
-            parsed.attributes().mode(),
-            parsed.serde_attributes(),
-        ) {
+    for (position, (parsed, binding)) in fields.iter().zip(&bindings).enumerate() {
+        if field_is_skipped(parsed.attributes().mode(), parsed.serde_attributes()) {
             continue;
         }
         let field = parsed.field();
         let field_name = parsed.index().index.to_string();
-        let context =
-            field_context(Some(variant_name), Some(variant_index), &field_name);
+        let context = field_context(Some(variant_name), Some(variant_index), &field_name);
         let carrier = format_ident!("__qubit_redact_serialized_{position}");
         let raw = quote_spanned!(field.span()=> #binding);
         let value = serialized_carrier(

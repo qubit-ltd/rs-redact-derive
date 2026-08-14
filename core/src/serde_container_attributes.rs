@@ -186,9 +186,7 @@ fn representation(
                 input.ident,
             ),
         )),
-        (Some(tag), None) => {
-            Ok(SerdeEnumRepresentation::InternallyTagged { tag: tag.value() })
-        }
+        (Some(tag), None) => Ok(SerdeEnumRepresentation::InternallyTagged { tag: tag.value() }),
         (Some(tag), Some(content)) => {
             if tag.value() == content.value() {
                 return Err(Error::new_spanned(

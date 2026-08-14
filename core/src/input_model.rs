@@ -59,11 +59,8 @@ pub(crate) fn parse<'a>(
                 .iter()
                 .enumerate()
                 .map(|(index, variant)| {
-                    let serde_attributes = SerdeVariantAttributes::parse(
-                        variant,
-                        &input.ident,
-                        serde_enabled,
-                    )?;
+                    let serde_attributes =
+                        SerdeVariantAttributes::parse(variant, &input.ident, serde_enabled)?;
                     let fields = parse_fields(
                         &variant.fields,
                         &input.ident,
@@ -119,14 +116,12 @@ fn parse_fields<'a>(
             serde_enabled,
             require_explicit,
         )?)),
-        Fields::Unnamed(fields) => {
-            Ok(FieldsData::Unnamed(unnamed_fields::parse(
-                fields,
-                type_name,
-                serde_enabled,
-                require_explicit,
-            )?))
-        }
+        Fields::Unnamed(fields) => Ok(FieldsData::Unnamed(unnamed_fields::parse(
+            fields,
+            type_name,
+            serde_enabled,
+            require_explicit,
+        )?)),
         Fields::Unit => Ok(FieldsData::Unit),
     }
 }

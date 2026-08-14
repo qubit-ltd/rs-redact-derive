@@ -50,15 +50,14 @@ pub(super) fn external_variant_arm(
     let variant_index = variant.index();
     let arm = match variant.fields() {
         FieldsData::Named(fields) => {
-            let (pattern, setups, conditions, names, carriers) =
-                enum_named_parts(
-                    type_name,
-                    rust_name,
-                    fields,
-                    runtime,
-                    container_attributes,
-                    variant,
-                );
+            let (pattern, setups, conditions, names, carriers) = enum_named_parts(
+                type_name,
+                rust_name,
+                fields,
+                runtime,
+                container_attributes,
+                variant,
+            );
             let count_conditions = &conditions;
             let calls = conditions.iter().zip(&names).zip(&carriers).map(
                 |((_condition, field_name), carrier)| {
@@ -95,13 +94,8 @@ pub(super) fn external_variant_arm(
             }
         }
         FieldsData::Unnamed(fields) if fields.len() == 1 => {
-            let (pattern, setups, _conditions, carriers) = enum_unnamed_parts(
-                type_name,
-                rust_name,
-                variant.index(),
-                fields,
-                runtime,
-            );
+            let (pattern, setups, _conditions, carriers) =
+                enum_unnamed_parts(type_name, rust_name, variant.index(), fields, runtime);
             if carriers.is_empty() {
                 quote! {
                     Self::#rust_name #pattern => #serde::Serializer::serialize_unit_variant(
@@ -137,13 +131,8 @@ pub(super) fn external_variant_arm(
             }
         }
         FieldsData::Unnamed(fields) => {
-            let (pattern, setups, conditions, carriers) = enum_unnamed_parts(
-                type_name,
-                rust_name,
-                variant.index(),
-                fields,
-                runtime,
-            );
+            let (pattern, setups, conditions, carriers) =
+                enum_unnamed_parts(type_name, rust_name, variant.index(), fields, runtime);
             let count_conditions = &conditions;
             let calls = conditions
                 .iter()

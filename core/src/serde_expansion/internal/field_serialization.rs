@@ -84,12 +84,8 @@ pub(super) fn serialized_carrier(
     match mode {
         FieldMode::Plain => match serialize_with {
             Some(_path) => {
-                let helper = field_assertion::helper_name(
-                    type_name,
-                    field,
-                    context,
-                    "SerializeWith",
-                );
+                let helper =
+                    field_assertion::helper_name(type_name, field, context, "SerializeWith");
                 quote_spanned!(field.span()=> #helper(#raw))
             }
             None => raw,
@@ -105,21 +101,12 @@ pub(super) fn serialized_carrier(
             }
         }
         FieldMode::Nested => {
-            let helper = field_assertion::helper_name(
-                type_name,
-                field,
-                context,
-                "RedactSerialize",
-            );
+            let helper = field_assertion::helper_name(type_name, field, context, "RedactSerialize");
             quote_spanned!(field.span()=> #helper(#raw, policy))
         }
         FieldMode::Map => {
-            let helper = field_assertion::helper_name(
-                type_name,
-                field,
-                context,
-                "RedactMapSerialize",
-            );
+            let helper =
+                field_assertion::helper_name(type_name, field, context, "RedactMapSerialize");
             quote_spanned!(field.span()=> #helper(#raw, policy))
         }
         FieldMode::Json => quote_spanned! {field.span()=>
@@ -168,9 +155,8 @@ pub(super) fn field_context(
     variant_name.map_or_else(
         || field_name.to_owned(),
         |variant| {
-            let index = variant_index.expect(
-                "enum variant field contexts require a declaration index",
-            );
+            let index =
+                variant_index.expect("enum variant field contexts require a declaration index");
             format!("{variant}_{index}_{field_name}")
         },
     )

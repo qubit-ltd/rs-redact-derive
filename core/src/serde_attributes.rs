@@ -187,8 +187,7 @@ impl SerdeAttributes {
         field_name: &str,
         mode: &FieldMode,
     ) -> Result<()> {
-        if self.skip_serializing_if.is_some()
-            && !matches!(mode, FieldMode::Plain | FieldMode::Skip)
+        if self.skip_serializing_if.is_some() && !matches!(mode, FieldMode::Plain | FieldMode::Skip)
         {
             return Err(Error::new_spanned(
                 field,
@@ -197,9 +196,7 @@ impl SerdeAttributes {
                 ),
             ));
         }
-        if self.serialize_with.is_some()
-            && !matches!(mode, FieldMode::Plain | FieldMode::Skip)
-        {
+        if self.serialize_with.is_some() && !matches!(mode, FieldMode::Plain | FieldMode::Skip) {
             return Err(Error::new_spanned(
                 field,
                 format!(
@@ -267,9 +264,7 @@ fn is_deserialize_only_control(meta: &ParseNestedMeta<'_>) -> bool {
 
 /// Consumes one supported deserialization-only field control.
 fn parse_deserialize_only_control(meta: &ParseNestedMeta<'_>) -> Result<()> {
-    if meta.path.is_ident("skip_deserializing")
-        || meta.path.is_ident("deserialize_in_place")
-    {
+    if meta.path.is_ident("skip_deserializing") || meta.path.is_ident("deserialize_in_place") {
         if meta.input.peek(Token![=]) || meta.input.peek(Paren) {
             return Err(
                 meta.error("Redact serde expects a bare deserialization-only field control")

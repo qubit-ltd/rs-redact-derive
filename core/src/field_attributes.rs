@@ -147,12 +147,7 @@ fn parse_mode(
             &literal, type_name, field_name,
         )?))
     } else if meta.path.is_ident("skip") {
-        require_bare(
-            meta,
-            type_name,
-            field_name,
-            "bare `skip` without arguments",
-        )?;
+        require_bare(meta, type_name, field_name, "bare `skip` without arguments")?;
         Ok(FieldMode::Skip)
     } else if meta.path.is_ident("nested") {
         require_bare(
@@ -263,16 +258,9 @@ fn select_mode(
 ///
 /// A syntax error located at `tokens`.
 #[inline]
-fn field_error(
-    tokens: impl ToTokens,
-    type_name: &Ident,
-    field_name: &str,
-    message: &str,
-) -> Error {
+fn field_error(tokens: impl ToTokens, type_name: &Ident, field_name: &str, message: &str) -> Error {
     Error::new_spanned(
         tokens,
-        format!(
-            "Redact derive for `{type_name}` field `{field_name}`: {message}"
-        ),
+        format!("Redact derive for `{type_name}` field `{field_name}`: {message}"),
     )
 }

@@ -54,11 +54,7 @@ impl SerdeVariantAttributes {
     ///
     /// Panics only if `syn` supplies a nested metadata path without any
     /// segments, which violates the `ParseNestedMeta` path invariant.
-    pub(crate) fn parse(
-        variant: &Variant,
-        type_name: &Ident,
-        enabled: bool,
-    ) -> Result<Self> {
+    pub(crate) fn parse(variant: &Variant, type_name: &Ident, enabled: bool) -> Result<Self> {
         let mut parsed = Self {
             rename: None,
             rename_seen: false,
@@ -180,11 +176,7 @@ impl SerdeVariantAttributes {
     ///
     /// The serialized field name.
     #[inline]
-    pub(crate) fn rename_field(
-        &self,
-        field_name: &str,
-        container_name: String,
-    ) -> String {
+    pub(crate) fn rename_field(&self, field_name: &str, container_name: String) -> String {
         self.rename_all
             .as_ref()
             .map_or(container_name, |rule| rule.apply_to_field(field_name))

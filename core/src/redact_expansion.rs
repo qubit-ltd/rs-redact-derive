@@ -48,10 +48,7 @@ use crate::serde_path;
 ///
 /// Returns a targeted syntax error when container or field controls are
 /// invalid or when Serde controls conflict with the input shape.
-pub(crate) fn expand(
-    input: &DeriveInput,
-    runtime: &Path,
-) -> Result<TokenStream> {
+pub(crate) fn expand(input: &DeriveInput, runtime: &Path) -> Result<TokenStream> {
     let container_attributes = ContainerAttributes::parse(input)?;
     expand_with_container_attributes(input, runtime, container_attributes)
 }
@@ -62,11 +59,8 @@ pub(crate) fn expand_with_options(
     runtime: &Path,
     options: RedactOptions,
 ) -> Result<TokenStream> {
-    let container_attributes = ContainerAttributes::from_options(
-        options.debug,
-        options.display,
-        options.serde,
-    );
+    let container_attributes =
+        ContainerAttributes::from_options(options.debug, options.display, options.serde);
     expand_with_container_attributes(input, runtime, container_attributes)
 }
 
@@ -86,10 +80,8 @@ fn expand_with_container_attributes(
         .serde_enabled()
         .then(|| serde_path::resolve(input))
         .transpose()?;
-    let serde_container_attributes = SerdeContainerAttributes::parse(
-        input,
-        container_attributes.serde_enabled(),
-    )?;
+    let serde_container_attributes =
+        SerdeContainerAttributes::parse(input, container_attributes.serde_enabled())?;
     let serde_impl = serde_expansion::expand(
         input,
         runtime,
@@ -98,11 +90,7 @@ fn expand_with_container_attributes(
         &model,
     )?;
     let mut redaction_generics = input.generics.clone();
-    generic_bounds::add_immutable_bounds(
-        &mut redaction_generics,
-        &model,
-        runtime,
-    );
+    generic_bounds::add_immutable_bounds(&mut redaction_generics, &model, runtime);
     let (immutable_assertions, format_body) = match &model {
         ContainerData::Struct(fields) => (
             immutable_assertions(&input.ident, fields, runtime),
@@ -113,26 +101,21 @@ fn expand_with_container_attributes(
             enum_format_body(&input.ident, variants, runtime),
         ),
     };
-    let format_impl = format_expansion::expand(
-        input,
-        runtime,
-        &container_attributes,
-        &redaction_generics,
-    );
+    let format_impl =
+        format_expansion::expand(input, runtime, &container_attributes, &redaction_generics);
     let mutable_impl = if container_attributes.mutable_disabled() {
         TokenStream::new()
     } else {
         crate::redact_mut_expansion::expand(input, runtime, &model)?
     };
     let name = &input.ident;
-    let (impl_generics, type_generics, where_clause) =
-        redaction_generics.split_for_impl();
+    let (impl_generics, type_generics, where_clause) = redaction_generics.split_for_impl();
 
     Ok(quote! {
         impl #impl_generics #runtime::Redact for #name #type_generics #where_clause {
             fn fmt_redacted(
                 &self,
-                session: &#runtime::RedactionSession<'_>,
+                session: &mut #runtime::RedactionSession<'_>,
                 formatter: &mut ::core::fmt::Formatter<'_>,
             ) -> ::core::fmt::Result {
                 #(#immutable_assertions)*
@@ -203,18 +186,10 @@ fn immutable_assertions(
 /// # Returns
 ///
 /// A complete formatter expression for named, tuple, or unit structs.
-fn format_body(
-    type_name: &Ident,
-    fields: &FieldsData<'_>,
-    runtime: &Path,
-) -> TokenStream {
+fn format_body(type_name: &Ident, fields: &FieldsData<'_>, runtime: &Path) -> TokenStream {
     match fields {
-        FieldsData::Named(fields) => {
-            named_format_body(type_name, fields, runtime)
-        }
-        FieldsData::Unnamed(fields) => {
-            unnamed_format_body(type_name, fields, runtime)
-        }
+        FieldsData::Named(fields) => named_format_body(type_name, fields, runtime),
+        FieldsData::Unnamed(fields) => unnamed_format_body(type_name, fields, runtime),
         FieldsData::Unit => quote! {
             formatter.write_str(stringify!(#type_name))
         },
@@ -231,11 +206,7 @@ fn format_body(
 /// # Returns
 ///
 /// A `DebugStruct` expression omitting skipped fields.
-fn named_format_body(
-    type_name: &Ident,
-    fields: &[NamedField<'_>],
-    runtime: &Path,
-) -> TokenStream {
+fn named_format_body(type_name: &Ident, fields: &[NamedField<'_>], runtime: &Path) -> TokenStream {
     let field_calls = fields.iter().map(|parsed| {
         let field = parsed.field();
         let identifier = parsed.identifier();
@@ -384,11 +355,8 @@ fn enum_immutable_assertions(
                     .iter()
                     .map(|parsed| {
                         let field_name = parsed.identifier().to_string();
-                        let context = variant_field_context(
-                            variant.index(),
-                            variant_name,
-                            &field_name,
-                        );
+                        let context =
+                            variant_field_context(variant.index(), variant_name, &field_name);
                         field_assertion::immutable(
                             type_name,
                             parsed.field(),
@@ -402,11 +370,8 @@ fn enum_immutable_assertions(
                     .iter()
                     .map(|parsed| {
                         let field_name = parsed.index().index.to_string();
-                        let context = variant_field_context(
-                            variant.index(),
-                            variant_name,
-                            &field_name,
-                        );
+                        let context =
+                            variant_field_context(variant.index(), variant_name, &field_name);
                         field_assertion::immutable(
                             type_name,
                             parsed.field(),
@@ -626,10 +591,6 @@ fn enum_unnamed_format_arm(
 ///
 /// A stable variant-qualified field context.
 #[inline]
-fn variant_field_context(
-    variant_index: u32,
-    variant_name: &Ident,
-    field_name: &str,
-) -> String {
+fn variant_field_context(variant_index: u32, variant_name: &Ident, field_name: &str) -> String {
     format!("{variant_name}_{variant_index}_{field_name}")
 }

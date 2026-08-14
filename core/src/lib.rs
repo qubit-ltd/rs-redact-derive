@@ -41,10 +41,7 @@ pub fn expand(input: &DeriveInput) -> Result<TokenStream> {
 }
 
 /// Generates a redaction expansion using options supplied by another macro.
-pub fn expand_with_options(
-    input: &DeriveInput,
-    options: RedactOptions,
-) -> Result<TokenStream> {
+pub fn expand_with_options(input: &DeriveInput, options: RedactOptions) -> Result<TokenStream> {
     let runtime = runtime_path::resolve(input)?;
     redact_expansion::expand_with_options(input, &runtime, options)
 }

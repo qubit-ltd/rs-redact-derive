@@ -162,10 +162,7 @@ impl<'input> SerdeContainerAttributeParser<'input> {
     ///
     /// Returns a targeted error for duplicate, malformed, or unsupported
     /// controls.
-    fn parse_nested_attribute(
-        &mut self,
-        meta: ParseNestedMeta<'_>,
-    ) -> Result<()> {
+    fn parse_nested_attribute(&mut self, meta: ParseNestedMeta<'_>) -> Result<()> {
         if meta.path.is_ident("rename") {
             parse_name(
                 &meta,
@@ -193,11 +190,7 @@ impl<'input> SerdeContainerAttributeParser<'input> {
         } else if meta.path.is_ident("default") {
             parse_deserialize_only_default(&meta, &self.input.ident)
         } else if meta.path.is_ident("deny_unknown_fields") {
-            require_bare_deserialize_only(
-                &meta,
-                &self.input.ident,
-                "deny_unknown_fields",
-            )
+            require_bare_deserialize_only(&meta, &self.input.ident, "deny_unknown_fields")
         } else {
             Err(self.unsupported_control_error(meta))
         }
@@ -213,10 +206,7 @@ impl<'input> SerdeContainerAttributeParser<'input> {
     ///
     /// Returns an error when the input is not an enum or the rule is invalid
     /// or repeated.
-    fn parse_rename_all_fields(
-        &mut self,
-        meta: ParseNestedMeta<'_>,
-    ) -> Result<()> {
+    fn parse_rename_all_fields(&mut self, meta: ParseNestedMeta<'_>) -> Result<()> {
         require_enum(&meta, self.input, "rename_all_fields")?;
         parse_rule(
             &meta,
@@ -336,10 +326,7 @@ impl<'input> SerdeContainerAttributeParser<'input> {
 }
 
 /// Parses a container `default` control that affects only deserialization.
-fn parse_deserialize_only_default(
-    meta: &ParseNestedMeta<'_>,
-    type_name: &Ident,
-) -> Result<()> {
+fn parse_deserialize_only_default(meta: &ParseNestedMeta<'_>, type_name: &Ident) -> Result<()> {
     if meta.input.peek(Token![=]) {
         let _: LitStr = meta.value()?.parse()?;
         return Ok(());
@@ -377,11 +364,7 @@ fn require_bare_deserialize_only(
 /// # Errors
 ///
 /// Returns a targeted error when the derive input is not an enum.
-fn require_enum(
-    meta: &ParseNestedMeta<'_>,
-    input: &DeriveInput,
-    name: &str,
-) -> Result<()> {
+fn require_enum(meta: &ParseNestedMeta<'_>, input: &DeriveInput, name: &str) -> Result<()> {
     if matches!(input.data, Data::Enum(_)) {
         Ok(())
     } else {
@@ -412,9 +395,7 @@ fn parse_name(
     output: &mut Option<String>,
 ) -> Result<()> {
     if *seen {
-        return Err(meta.error(format!(
-            "Redact serde for `{type_name}` repeats `{name}`",
-        )));
+        return Err(meta.error(format!("Redact serde for `{type_name}` repeats `{name}`",)));
     }
     *output = parse_serialize_name(meta, name)?.map(|literal| literal.value());
     *seen = true;
@@ -441,9 +422,7 @@ fn parse_rule(
     output: &mut Option<SerdeRenameRule>,
 ) -> Result<()> {
     if *seen {
-        return Err(meta.error(format!(
-            "Redact serde for `{type_name}` repeats `{name}`",
-        )));
+        return Err(meta.error(format!("Redact serde for `{type_name}` repeats `{name}`",)));
     }
     *output = parse_serialize_name(meta, name)?
         .map(|literal| SerdeRenameRule::parse(&literal))
@@ -471,9 +450,7 @@ fn parse_literal(
     output: &mut Option<LitStr>,
 ) -> Result<()> {
     if output.is_some() {
-        return Err(meta.error(format!(
-            "Redact serde for `{type_name}` repeats `{name}`",
-        )));
+        return Err(meta.error(format!("Redact serde for `{type_name}` repeats `{name}`",)));
     }
     *output = Some(meta.value()?.parse()?);
     Ok(())

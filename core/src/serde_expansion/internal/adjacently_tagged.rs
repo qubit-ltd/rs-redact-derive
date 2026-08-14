@@ -55,15 +55,14 @@ pub(super) fn adjacent_variant_arm(
     let enum_name = container_attributes.name();
     let arm = match variant.fields() {
         FieldsData::Named(fields) => {
-            let (pattern, setups, _conditions, names, carriers) =
-                enum_named_parts(
-                    type_name,
-                    rust_name,
-                    fields,
-                    runtime,
-                    container_attributes,
-                    variant,
-                );
+            let (pattern, setups, _conditions, names, carriers) = enum_named_parts(
+                type_name,
+                rust_name,
+                fields,
+                runtime,
+                container_attributes,
+                variant,
+            );
             let (proxy_definition, proxy_value) =
                 named_content_proxy(rust_name, serde, &names, &carriers);
             quote! {
@@ -91,13 +90,8 @@ pub(super) fn adjacent_variant_arm(
             }
         }
         FieldsData::Unnamed(fields) if fields.len() == 1 => {
-            let (pattern, setups, _conditions, carriers) = enum_unnamed_parts(
-                type_name,
-                rust_name,
-                variant.index(),
-                fields,
-                runtime,
-            );
+            let (pattern, setups, _conditions, carriers) =
+                enum_unnamed_parts(type_name, rust_name, variant.index(), fields, runtime);
             if carriers.is_empty() {
                 quote! {
                     Self::#rust_name #pattern => {
@@ -143,15 +137,9 @@ pub(super) fn adjacent_variant_arm(
             }
         }
         FieldsData::Unnamed(fields) => {
-            let (pattern, setups, _conditions, carriers) = enum_unnamed_parts(
-                type_name,
-                rust_name,
-                variant.index(),
-                fields,
-                runtime,
-            );
-            let (proxy_definition, proxy_value) =
-                tuple_content_proxy(rust_name, serde, &carriers);
+            let (pattern, setups, _conditions, carriers) =
+                enum_unnamed_parts(type_name, rust_name, variant.index(), fields, runtime);
+            let (proxy_definition, proxy_value) = tuple_content_proxy(rust_name, serde, &carriers);
             quote! {
                 Self::#rust_name #pattern => {
                     #(#setups)*

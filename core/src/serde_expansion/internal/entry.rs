@@ -56,25 +56,13 @@ pub(crate) fn expand(
         return Ok(TokenStream::new());
     };
 
-    let serialization_assertions = serialization_assertions(
-        &input.ident,
-        model,
-        runtime,
-        serde,
-        &input.generics,
-    );
-    let serializer = generic_bounds::fresh_identifier(
-        &input.generics,
-        "__QubitRedactSerializer",
-    );
+    let serialization_assertions =
+        serialization_assertions(&input.ident, model, runtime, serde, &input.generics);
+    let serializer = generic_bounds::fresh_identifier(&input.generics, "__QubitRedactSerializer");
     let body = match model {
-        ContainerData::Struct(fields) => struct_body(
-            &input.ident,
-            fields,
-            runtime,
-            serde,
-            container_attributes,
-        ),
+        ContainerData::Struct(fields) => {
+            struct_body(&input.ident, fields, runtime, serde, container_attributes)
+        }
         ContainerData::Enum(variants) => enum_body(
             &input.ident,
             variants,
@@ -85,15 +73,9 @@ pub(crate) fn expand(
         )?,
     };
     let mut serialization_generics = input.generics.clone();
-    generic_bounds::add_serialization_bounds(
-        &mut serialization_generics,
-        model,
-        runtime,
-        serde,
-    );
+    generic_bounds::add_serialization_bounds(&mut serialization_generics, model, runtime, serde);
     let name = &input.ident;
-    let (impl_generics, type_generics, where_clause) =
-        serialization_generics.split_for_impl();
+    let (impl_generics, type_generics, where_clause) = serialization_generics.split_for_impl();
 
     Ok(quote! {
         #runtime::__qubit_redact_serde! {
@@ -161,9 +143,9 @@ fn serialization_assertions(
     generics: &Generics,
 ) -> Vec<TokenStream> {
     match model {
-        ContainerData::Struct(fields) => fields_serialization_assertions(
-            type_name, fields, None, runtime, serde, generics,
-        ),
+        ContainerData::Struct(fields) => {
+            fields_serialization_assertions(type_name, fields, None, runtime, serde, generics)
+        }
         ContainerData::Enum(variants) => variants
             .iter()
             .flat_map(|variant| {

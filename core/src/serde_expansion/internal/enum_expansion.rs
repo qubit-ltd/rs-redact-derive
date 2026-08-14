@@ -55,42 +55,28 @@ pub(super) fn enum_body(
             }
             match container_attributes.representation() {
                 SerdeEnumRepresentation::ExternallyTagged => {
-                    external_variant_arm(
-                        type_name,
-                        variant,
-                        runtime,
-                        serde,
-                        container_attributes,
-                    )
+                    external_variant_arm(type_name, variant, runtime, serde, container_attributes)
                 }
-                SerdeEnumRepresentation::InternallyTagged { tag } => {
-                    internal_variant_arm(
-                        type_name,
-                        variant,
-                        runtime,
-                        serde,
-                        container_attributes,
-                        tag,
-                    )
-                }
-                SerdeEnumRepresentation::AdjacentlyTagged { tag, content } => {
-                    adjacent_variant_arm(
-                        type_name,
-                        variant,
-                        runtime,
-                        serde,
-                        container_attributes,
-                        tag,
-                        content,
-                    )
-                }
-                SerdeEnumRepresentation::Untagged => untagged_variant_arm(
+                SerdeEnumRepresentation::InternallyTagged { tag } => internal_variant_arm(
                     type_name,
                     variant,
                     runtime,
                     serde,
                     container_attributes,
+                    tag,
                 ),
+                SerdeEnumRepresentation::AdjacentlyTagged { tag, content } => adjacent_variant_arm(
+                    type_name,
+                    variant,
+                    runtime,
+                    serde,
+                    container_attributes,
+                    tag,
+                    content,
+                ),
+                SerdeEnumRepresentation::Untagged => {
+                    untagged_variant_arm(type_name, variant, runtime, serde, container_attributes)
+                }
             }
         })
         .collect::<Result<Vec<_>>>()?;
@@ -112,15 +98,10 @@ pub(super) fn enum_body(
 ///
 /// A match arm returning Serde's custom skipped-variant error.
 #[inline]
-fn skipped_variant_arm(
-    variant: &VariantData<'_>,
-    serde: &Path,
-    serializer: &Ident,
-) -> TokenStream {
+fn skipped_variant_arm(variant: &VariantData<'_>, serde: &Path, serializer: &Ident) -> TokenStream {
     let variant_name = &variant.variant().ident;
     let pattern = wildcard_variant_pattern(variant);
-    let message =
-        format!("cannot serialize skipped redacted variant `{variant_name}`",);
+    let message = format!("cannot serialize skipped redacted variant `{variant_name}`",);
     quote! {
         Self::#variant_name #pattern => ::core::result::Result::Err(
             <#serializer::Error as #serde::ser::Error>::custom(#message),

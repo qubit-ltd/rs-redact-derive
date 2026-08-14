@@ -43,8 +43,7 @@ pub(crate) fn immutable(
     mode: &FieldMode,
     runtime: &Path,
 ) -> TokenStream {
-    let helper =
-        helper_name(type_name, field, field_name, mode.immutable_trait_name());
+    let helper = helper_name(type_name, field, field_name, mode.immutable_trait_name());
     match mode {
         FieldMode::Plain | FieldMode::Skip => TokenStream::new(),
         FieldMode::Level(sensitivity) => {
@@ -55,7 +54,7 @@ pub(crate) fn immutable(
                 #[inline(always)]
                 fn #helper<'a, 's, 'p, __QubitRedactField>(
                     value: &'a __QubitRedactField,
-                    session: &'s #runtime::RedactionSession<'p>,
+                    session: &'s mut #runtime::RedactionSession<'p>,
                 ) -> #runtime::RedactedValue<'a>
                 where
                     __QubitRedactField: #runtime::RedactValue + ?Sized,
@@ -73,17 +72,12 @@ pub(crate) fn immutable(
             #[inline(always)]
             fn #helper<'a, 's, 'p, __QubitRedactField>(
                 value: &'a __QubitRedactField,
-                session: &'s #runtime::RedactionSession<'p>,
-            ) -> #runtime::RedactedSessionView<
-                'a,
-                's,
-                'p,
-                __QubitRedactField,
-            >
+                session: &'s mut #runtime::RedactionSession<'p>,
+            ) -> #runtime::RedactedResult<'a, __QubitRedactField>
             where
                 __QubitRedactField: #runtime::Redact,
             {
-                #runtime::RedactedSessionView::new(value, session)
+                #runtime::RedactedResult::new(value, session)
             }
         },
         FieldMode::Map => quote_spanned! {field.span()=>
@@ -98,11 +92,9 @@ pub(crate) fn immutable(
                 __QubitRedactValue: ?Sized,
             >(
                 value: &'a __QubitRedactField,
-                session: &'s #runtime::RedactionSession<'p>,
-            ) -> #runtime::RedactedMapSession<
+                session: &'s mut #runtime::RedactionSession<'p>,
+            ) -> #runtime::RedactedMapResult<
                 'a,
-                's,
-                'p,
                 __QubitRedactField,
                 __QubitRedactKey,
                 __QubitRedactValue,
@@ -114,7 +106,7 @@ pub(crate) fn immutable(
                         __QubitRedactValue,
                     > + ?Sized,
             {
-                #runtime::RedactedMapSession::new(value, session)
+                #runtime::RedactedMapResult::new(value, session)
             }
         },
         FieldMode::Json => quote_spanned! {field.span()=>
@@ -124,9 +116,9 @@ pub(crate) fn immutable(
                 #[inline(always)]
                 fn #helper<'a, 's, 'p>(
                     value: &'a ::std::string::String,
-                    session: &'s #runtime::RedactionSession<'p>,
-                ) -> #runtime::RedactedJsonTextSession<'a, 's, 'p> {
-                    #runtime::RedactedJsonTextSession::new(value, session)
+                    session: &'s mut #runtime::RedactionSession<'p>,
+                ) -> #runtime::LogSafeText<'static> {
+                    session.json().redact_text(value)
                 }
             }
         },
@@ -153,18 +145,12 @@ pub(crate) fn mutable(
     mode: &FieldMode,
     runtime: &Path,
 ) -> TokenStream {
-    let helper =
-        helper_name(type_name, field, field_name, mode.mutable_trait_name());
+    let helper = helper_name(type_name, field, field_name, mode.mutable_trait_name());
     match mode {
         FieldMode::Plain | FieldMode::Skip => TokenStream::new(),
         FieldMode::Level(sensitivity) => {
             let level = sensitivity.runtime_tokens(runtime);
-            let capability = helper_name(
-                type_name,
-                field,
-                field_name,
-                "RedactValueMutCapability",
-            );
+            let capability = helper_name(type_name, field, field_name, "RedactValueMutCapability");
             quote_spanned! {field.span()=>
                 #[allow(non_camel_case_types)]
                 #[diagnostic::on_unimplemented(
@@ -197,12 +183,7 @@ pub(crate) fn mutable(
             }
         }
         FieldMode::Nested => {
-            let capability = helper_name(
-                type_name,
-                field,
-                field_name,
-                "RedactMutCapability",
-            );
+            let capability = helper_name(type_name, field, field_name, "RedactMutCapability");
             quote_spanned! {field.span()=>
                 #[allow(non_camel_case_types)]
                 #[diagnostic::on_unimplemented(
@@ -231,12 +212,8 @@ pub(crate) fn mutable(
             }
         }
         FieldMode::Map => {
-            let capability = helper_name(
-                type_name,
-                field,
-                field_name,
-                "RedactMapValueMutCapability",
-            );
+            let capability =
+                helper_name(type_name, field, field_name, "RedactMapValueMutCapability");
             quote_spanned! {field.span()=>
                 #[allow(non_camel_case_types)]
                 #[diagnostic::on_unimplemented(
@@ -332,12 +309,11 @@ pub(crate) fn serialization(
     let runtime = context.runtime;
     let serde = context.serde;
     let generics = context.generics;
-    let required_trait =
-        if matches!(mode, FieldMode::Plain) && serialize_with.is_some() {
-            "SerializeWith"
-        } else {
-            mode.serialization_trait_name()
-        };
+    let required_trait = if matches!(mode, FieldMode::Plain) && serialize_with.is_some() {
+        "SerializeWith"
+    } else {
+        mode.serialization_trait_name()
+    };
     let helper = helper_name(type_name, field, field_name, required_trait);
     match mode {
         FieldMode::Nested => quote_spanned! {field.span()=>

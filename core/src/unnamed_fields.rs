@@ -47,18 +47,10 @@ pub(crate) fn parse<'a>(
         .enumerate()
         .map(|(position, field)| {
             let field_name = position.to_string();
-            let attributes = FieldAttributes::parse(
-                field,
-                type_name,
-                &field_name,
-                require_explicit,
-            )?;
-            let serde_attributes = SerdeAttributes::parse(
-                field,
-                type_name,
-                &field_name,
-                serde_enabled,
-            )?;
+            let attributes =
+                FieldAttributes::parse(field, type_name, &field_name, require_explicit)?;
+            let serde_attributes =
+                SerdeAttributes::parse(field, type_name, &field_name, serde_enabled)?;
             serde_attributes.validate_redaction_mode(
                 field,
                 type_name,

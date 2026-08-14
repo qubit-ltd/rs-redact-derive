@@ -58,8 +58,7 @@ pub(crate) fn expand(
         ),
     };
     let name = &input.ident;
-    let (impl_generics, type_generics, where_clause) =
-        redaction_generics.split_for_impl();
+    let (impl_generics, type_generics, where_clause) = redaction_generics.split_for_impl();
 
     Ok(quote! {
         impl #impl_generics #runtime::RedactMut for #name #type_generics #where_clause {
@@ -129,11 +128,7 @@ fn mutable_assertions(
 /// # Returns
 ///
 /// Mutation statements for fields with destructive redaction modes.
-fn mutations(
-    type_name: &Ident,
-    fields: &FieldsData<'_>,
-    runtime: &Path,
-) -> TokenStream {
+fn mutations(type_name: &Ident, fields: &FieldsData<'_>, runtime: &Path) -> TokenStream {
     match fields {
         FieldsData::Named(fields) => {
             let mutations = named_mutations(type_name, fields, runtime);
@@ -273,11 +268,8 @@ fn enum_mutable_assertions(
                     .iter()
                     .map(|parsed| {
                         let field_name = parsed.identifier().to_string();
-                        let context = variant_field_context(
-                            variant.index(),
-                            variant_name,
-                            &field_name,
-                        );
+                        let context =
+                            variant_field_context(variant.index(), variant_name, &field_name);
                         field_assertion::mutable(
                             type_name,
                             parsed.field(),
@@ -291,11 +283,8 @@ fn enum_mutable_assertions(
                     .iter()
                     .map(|parsed| {
                         let field_name = parsed.index().index.to_string();
-                        let context = variant_field_context(
-                            variant.index(),
-                            variant_name,
-                            &field_name,
-                        );
+                        let context =
+                            variant_field_context(variant.index(), variant_name, &field_name);
                         field_assertion::mutable(
                             type_name,
                             parsed.field(),
@@ -321,28 +310,16 @@ fn enum_mutable_assertions(
 /// # Returns
 ///
 /// A complete match expression that mutates only the active variant.
-fn enum_mutations(
-    type_name: &Ident,
-    variants: &[VariantData<'_>],
-    runtime: &Path,
-) -> TokenStream {
+fn enum_mutations(type_name: &Ident, variants: &[VariantData<'_>], runtime: &Path) -> TokenStream {
     let arms = variants.iter().map(|variant| {
         let variant_name = &variant.variant().ident;
         match variant.fields() {
-            FieldsData::Named(fields) => enum_named_mutation_arm(
-                type_name,
-                variant.index(),
-                variant_name,
-                fields,
-                runtime,
-            ),
-            FieldsData::Unnamed(fields) => enum_unnamed_mutation_arm(
-                type_name,
-                variant.index(),
-                variant_name,
-                fields,
-                runtime,
-            ),
+            FieldsData::Named(fields) => {
+                enum_named_mutation_arm(type_name, variant.index(), variant_name, fields, runtime)
+            }
+            FieldsData::Unnamed(fields) => {
+                enum_unnamed_mutation_arm(type_name, variant.index(), variant_name, fields, runtime)
+            }
             FieldsData::Unit => quote!(Self::#variant_name => {}),
         }
     });
@@ -376,10 +353,7 @@ fn enum_named_mutation_arm(
         let identifier = parsed.identifier();
         if matches!(
             parsed.attributes().mode(),
-            FieldMode::Level(_)
-                | FieldMode::Nested
-                | FieldMode::Map
-                | FieldMode::Json,
+            FieldMode::Level(_) | FieldMode::Nested | FieldMode::Map | FieldMode::Json,
         ) {
             quote!(#identifier)
         } else {
@@ -443,10 +417,7 @@ fn enum_unnamed_mutation_arm(
     let patterns = fields.iter().zip(&bindings).map(|(parsed, binding)| {
         if matches!(
             parsed.attributes().mode(),
-            FieldMode::Level(_)
-                | FieldMode::Nested
-                | FieldMode::Map
-                | FieldMode::Json,
+            FieldMode::Level(_) | FieldMode::Nested | FieldMode::Map | FieldMode::Json,
         ) {
             quote!(#binding)
         } else {
@@ -492,10 +463,6 @@ fn enum_unnamed_mutation_arm(
 ///
 /// A stable variant-qualified field context.
 #[inline]
-fn variant_field_context(
-    variant_index: u32,
-    variant_name: &Ident,
-    field_name: &str,
-) -> String {
+fn variant_field_context(variant_index: u32, variant_name: &Ident, field_name: &str) -> String {
     format!("{variant_name}_{variant_index}_{field_name}")
 }

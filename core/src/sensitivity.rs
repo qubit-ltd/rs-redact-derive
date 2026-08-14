@@ -40,11 +40,7 @@ impl Sensitivity {
     ///
     /// Returns an error at `literal` when its value is not exactly `low`,
     /// `medium`, `high`, or `secret`.
-    pub(crate) fn parse(
-        literal: &LitStr,
-        type_name: &Ident,
-        field_name: &str,
-    ) -> Result<Self> {
+    pub(crate) fn parse(literal: &LitStr, type_name: &Ident, field_name: &str) -> Result<Self> {
         match literal.value().as_str() {
             "low" => Ok(Self {
                 runtime_variant: "Low",
