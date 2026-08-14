@@ -30,8 +30,8 @@ its section and run `cargo run`.
 
 ```toml
 [dependencies]
-qubit-redact = { version = "0.4", features = ["serde"] }
-qubit-redact-derive = "0.4"
+qubit-redact = { version = "0.5", features = ["serde"] }
+qubit-redact-derive = "0.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ```
@@ -43,7 +43,7 @@ default.
 
 For `#[redact(json)]`, enable the runtime `json` feature as well. When a
 derive uses both JSON redaction and Serde, enable both features:
-`qubit-redact = { version = "0.4", features = ["serde", "json"] }`.
+`qubit-redact = { version = "0.5", features = ["serde", "json"] }`.
 
 The derive package's `test-json` feature is only for its own test suite; it
 does not enable runtime features for downstream crates.
@@ -357,8 +357,8 @@ dependency is valid:
 
 ```toml
 [dependencies]
-redaction = { package = "qubit-redact", version = "0.4" }
-qubit-redact-derive = "0.4"
+redaction = { package = "qubit-redact", version = "0.5" }
+qubit-redact-derive = "0.5"
 ```
 
 The derive macro still emits the correct path. Do not rely on a transitive

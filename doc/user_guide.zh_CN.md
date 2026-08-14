@@ -28,8 +28,8 @@ Qubit Redact Derive 将字段级脱敏决策生成到 Rust 领域类型的实现
 
 ```toml
 [dependencies]
-qubit-redact = { version = "0.4", features = ["serde"] }
-qubit-redact-derive = "0.4"
+qubit-redact = { version = "0.5", features = ["serde"] }
+qubit-redact-derive = "0.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ```
@@ -40,7 +40,7 @@ serde_json = "1"
 
 使用 `#[redact(json)]` 时，还要启用运行时的 `json` feature。一个 derive 同时使用
 JSON 脱敏和 Serde 时，应同时启用两个 feature：
-`qubit-redact = { version = "0.4", features = ["serde", "json"] }`。
+`qubit-redact = { version = "0.5", features = ["serde", "json"] }`。
 
 派生 crate 的 `test-json` feature 仅用于自身测试，不会为下游 crate 启用运行时 feature。
 
@@ -328,8 +328,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```toml
 [dependencies]
-redaction = { package = "qubit-redact", version = "0.4" }
-qubit-redact-derive = "0.4"
+redaction = { package = "qubit-redact", version = "0.5" }
+qubit-redact-derive = "0.5"
 ```
 
 派生宏仍会生成正确路径。不要依赖传递性的运行时依赖；应在使用 derive 的 package 中直接添加它。
