@@ -108,11 +108,16 @@ fn expand_with_container_attributes(
     } else {
         crate::redact_mut_expansion::expand(input, runtime, &model)?
     };
+    let input_bytes = redaction_input_bytes(&model);
     let name = &input.ident;
     let (impl_generics, type_generics, where_clause) = redaction_generics.split_for_impl();
 
     Ok(quote! {
         impl #impl_generics #runtime::Redact for #name #type_generics #where_clause {
+            fn redaction_input_bytes(&self) -> usize {
+                #input_bytes
+            }
+
             fn fmt_redacted(
                 &self,
                 session: &mut #runtime::RedactionSession<'_>,
@@ -126,6 +131,62 @@ fn expand_with_container_attributes(
         #serde_impl
         #mutable_impl
     })
+}
+
+/// Generates the input byte reservation for safe derived formatting.
+///
+/// Only structs whose rendered fields are JSON text or skipped fields have a
+/// complete byte measurement without invoking formatting traits. Other shapes
+/// retain the runtime's fail-closed fallback.
+///
+/// # Parameters
+///
+/// * `model` - Parsed derived container model.
+///
+/// # Returns
+///
+/// An expression that returns an exact JSON-text byte total or `usize::MAX`.
+fn redaction_input_bytes(model: &ContainerData<'_>) -> TokenStream {
+    let ContainerData::Struct(fields) = model else {
+        return quote!(usize::MAX);
+    };
+    match fields {
+        FieldsData::Named(fields) => {
+            let mut lengths = Vec::new();
+            for parsed in fields {
+                match parsed.attributes().mode() {
+                    FieldMode::Json => {
+                        let identifier = parsed.identifier();
+                        lengths.push(quote!(self.#identifier.len()));
+                    }
+                    FieldMode::Skip => {}
+                    FieldMode::Plain
+                    | FieldMode::Level(_)
+                    | FieldMode::Nested
+                    | FieldMode::Map => return quote!(usize::MAX),
+                }
+            }
+            quote!(0usize #(.saturating_add(#lengths))*)
+        }
+        FieldsData::Unnamed(fields) => {
+            let mut lengths = Vec::new();
+            for parsed in fields {
+                match parsed.attributes().mode() {
+                    FieldMode::Json => {
+                        let index = parsed.index();
+                        lengths.push(quote!(self.#index.len()));
+                    }
+                    FieldMode::Skip => {}
+                    FieldMode::Plain
+                    | FieldMode::Level(_)
+                    | FieldMode::Nested
+                    | FieldMode::Map => return quote!(usize::MAX),
+                }
+            }
+            quote!(0usize #(.saturating_add(#lengths))*)
+        }
+        FieldsData::Unit => quote!(0usize),
+    }
 }
 
 /// Generates immutable capability assertions for one struct shape.
