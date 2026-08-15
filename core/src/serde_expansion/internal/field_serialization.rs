@@ -93,7 +93,7 @@ pub(super) fn serialized_carrier(
         FieldMode::Level(sensitivity) => {
             let level = sensitivity.runtime_tokens(runtime);
             quote_spanned! {field.span()=>
-                #runtime::RedactValue::redact_value(
+                #runtime::domain::RedactValue::redact_value(
                     #raw,
                     #level,
                     policy.masking(),

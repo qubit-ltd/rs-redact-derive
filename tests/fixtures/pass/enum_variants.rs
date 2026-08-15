@@ -7,6 +7,9 @@
 // =============================================================================
 //! Compile-pass fixture for every enum variant shape.
 
+use qubit_redact::domain::Redact as _;
+use qubit_redact::policy::DomainRedactionLimits;
+use qubit_redact::RedactionPolicy;
 use qubit_redact_derive::Redact;
 
 /// Enum combining named, tuple, and unit variants.
@@ -27,11 +30,31 @@ enum Event {
     Ready,
 }
 
-/// Keeps the supported type reachable.
+/// Exercises complete safe output for every supported variant shape.
 fn main() {
-    let _ = Event::Named {
-        secret: String::new(),
+    let mut builder = RedactionPolicy::builder();
+    builder.limits().domain(
+        DomainRedactionLimits::new(2, 1, 1)
+            .expect("the fixture domain limits should be valid"),
+    );
+    let policy = builder
+        .build()
+        .expect("the fixture redaction policy should be valid");
+
+    let named = Event::Named {
+        secret: "raw-named".to_owned(),
     };
-    let _ = Event::Tuple(String::new(), String::new());
-    let _ = Event::Ready;
+    let tuple = Event::Tuple("raw-tuple".to_owned(), "skipped".to_owned());
+    assert_eq!(
+        format!("{:?}", named.redacted_with(&policy)),
+        r#"Named { secret: "<redacted>" }"#,
+    );
+    assert_eq!(
+        format!("{:?}", tuple.redacted_with(&policy)),
+        r#"Tuple("<redacted>")"#,
+    );
+    assert_eq!(
+        format!("{:?}", Event::Ready.redacted_with(&policy)),
+        "Ready",
+    );
 }

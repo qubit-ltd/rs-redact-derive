@@ -108,16 +108,11 @@ fn expand_with_container_attributes(
     } else {
         crate::redact_mut_expansion::expand(input, runtime, &model)?
     };
-    let input_bytes = redaction_input_bytes(&model);
     let name = &input.ident;
     let (impl_generics, type_generics, where_clause) = redaction_generics.split_for_impl();
 
     Ok(quote! {
-        impl #impl_generics #runtime::Redact for #name #type_generics #where_clause {
-            fn redaction_input_bytes(&self) -> usize {
-                #input_bytes
-            }
-
+        impl #impl_generics #runtime::domain::Redact for #name #type_generics #where_clause {
             fn fmt_redacted(
                 &self,
                 session: &mut #runtime::RedactionSession<'_>,
@@ -131,62 +126,6 @@ fn expand_with_container_attributes(
         #serde_impl
         #mutable_impl
     })
-}
-
-/// Generates the input byte reservation for safe derived formatting.
-///
-/// Only structs whose rendered fields are JSON text or skipped fields have a
-/// complete byte measurement without invoking formatting traits. Other shapes
-/// retain the runtime's fail-closed fallback.
-///
-/// # Parameters
-///
-/// * `model` - Parsed derived container model.
-///
-/// # Returns
-///
-/// An expression that returns an exact JSON-text byte total or `usize::MAX`.
-fn redaction_input_bytes(model: &ContainerData<'_>) -> TokenStream {
-    let ContainerData::Struct(fields) = model else {
-        return quote!(usize::MAX);
-    };
-    match fields {
-        FieldsData::Named(fields) => {
-            let mut lengths = Vec::new();
-            for parsed in fields {
-                match parsed.attributes().mode() {
-                    FieldMode::Json => {
-                        let identifier = parsed.identifier();
-                        lengths.push(quote!(self.#identifier.len()));
-                    }
-                    FieldMode::Skip => {}
-                    FieldMode::Plain
-                    | FieldMode::Level(_)
-                    | FieldMode::Nested
-                    | FieldMode::Map => return quote!(usize::MAX),
-                }
-            }
-            quote!(0usize #(.saturating_add(#lengths))*)
-        }
-        FieldsData::Unnamed(fields) => {
-            let mut lengths = Vec::new();
-            for parsed in fields {
-                match parsed.attributes().mode() {
-                    FieldMode::Json => {
-                        let index = parsed.index();
-                        lengths.push(quote!(self.#index.len()));
-                    }
-                    FieldMode::Skip => {}
-                    FieldMode::Plain
-                    | FieldMode::Level(_)
-                    | FieldMode::Nested
-                    | FieldMode::Map => return quote!(usize::MAX),
-                }
-            }
-            quote!(0usize #(.saturating_add(#lengths))*)
-        }
-        FieldsData::Unit => quote!(0usize),
-    }
 }
 
 /// Generates immutable capability assertions for one struct shape.
@@ -246,14 +185,24 @@ fn immutable_assertions(
 ///
 /// # Returns
 ///
-/// A complete formatter expression for named, tuple, or unit structs.
+/// A complete formatter expression for named, tuple, or unit structs. The
+/// generated code enters the container before inspecting its shape and keeps
+/// the returned scope alive while fields and nested helpers are admitted.
 fn format_body(type_name: &Ident, fields: &FieldsData<'_>, runtime: &Path) -> TokenStream {
-    match fields {
+    let body = match fields {
         FieldsData::Named(fields) => named_format_body(type_name, fields, runtime),
         FieldsData::Unnamed(fields) => unnamed_format_body(type_name, fields, runtime),
         FieldsData::Unit => quote! {
             formatter.write_str(stringify!(#type_name))
         },
+    };
+    quote! {
+        let #runtime::policy::DomainValueAdmission::Entered(mut __scope) =
+            session.enter_domain_value()
+        else {
+            return formatter.write_str("<truncated>");
+        };
+        #body
     }
 }
 
@@ -263,19 +212,22 @@ fn format_body(type_name: &Ident, fields: &FieldsData<'_>, runtime: &Path) -> To
 ///
 /// * `type_name` - Type name shown in formatter output.
 /// * `fields` - Parsed named fields in source order.
+/// * `runtime` - Resolved path to the runtime crate.
 ///
 /// # Returns
 ///
-/// A `DebugStruct` expression omitting skipped fields.
+/// A `DebugStruct` expression omitting skipped fields. Every rendered field is
+/// admitted before its source expression is evaluated. Rejection writes one
+/// structural marker and returns without inspecting that field or any sibling.
 fn named_format_body(type_name: &Ident, fields: &[NamedField<'_>], runtime: &Path) -> TokenStream {
     let field_calls = fields.iter().map(|parsed| {
         let field = parsed.field();
         let identifier = parsed.identifier();
         let attributes = parsed.attributes();
         let field_name = identifier.to_string();
-        match attributes.mode() {
+        let admitted = match attributes.mode() {
             FieldMode::Plain => quote_spanned! {field.span()=>
-                .field(#field_name, &self.#identifier)
+                __output.field(#field_name, &self.#identifier);
             },
             FieldMode::Level(_) | FieldMode::Nested | FieldMode::Map => {
                 let helper = field_assertion::helper_name(
@@ -285,7 +237,11 @@ fn named_format_body(type_name: &Ident, fields: &[NamedField<'_>], runtime: &Pat
                     immutable_trait_name(attributes.mode()),
                 );
                 quote_spanned! {field.span()=>
-                    .field(#field_name, &#helper(&self.#identifier, session))
+                    let __field_view = #helper(
+                        &self.#identifier,
+                        __scope.session(),
+                    );
+                    __output.field(#field_name, &__field_view);
                 }
             }
             FieldMode::Json => {
@@ -296,20 +252,33 @@ fn named_format_body(type_name: &Ident, fields: &[NamedField<'_>], runtime: &Pat
                     immutable_trait_name(attributes.mode()),
                 );
                 quote_spanned! {field.span()=>
-                    .field(
+                    let __field_view = #runtime::__qubit_redact_json!(#helper(
+                        &self.#identifier,
+                        __scope.session(),
+                    ));
+                    __output.field(
                         #field_name,
-                        &#runtime::__qubit_redact_json!(#helper(&self.#identifier, session)),
-                    )
+                        &__field_view,
+                    );
                 }
             }
-            FieldMode::Skip => TokenStream::new(),
+            FieldMode::Skip => return TokenStream::new(),
+        };
+        quote_spanned! {field.span()=>
+            if __scope.admit_field()
+                == #runtime::policy::DomainTraversalAdmission::Render
+            {
+                #admitted
+            } else {
+                __output.field("...", &#runtime::domain::DomainTruncated);
+                return __output.finish();
+            }
         }
     });
     quote! {
-        formatter
-            .debug_struct(stringify!(#type_name))
-            #(#field_calls)*
-            .finish()
+        let mut __output = formatter.debug_struct(stringify!(#type_name));
+        #(#field_calls)*
+        __output.finish()
     }
 }
 
@@ -319,10 +288,13 @@ fn named_format_body(type_name: &Ident, fields: &[NamedField<'_>], runtime: &Pat
 ///
 /// * `type_name` - Type name shown in formatter output.
 /// * `fields` - Parsed tuple fields in source order.
+/// * `runtime` - Resolved path to the runtime crate.
 ///
 /// # Returns
 ///
-/// A `DebugTuple` expression omitting skipped fields.
+/// A `DebugTuple` expression omitting skipped fields. Each source field is
+/// evaluated only after admission, and the first rejection terminates the
+/// tuple with an unquoted structural marker.
 fn unnamed_format_body(
     type_name: &Ident,
     fields: &[UnnamedField<'_>],
@@ -333,9 +305,9 @@ fn unnamed_format_body(
         let index = parsed.index();
         let attributes = parsed.attributes();
         let field_name = index.index.to_string();
-        match attributes.mode() {
+        let admitted = match attributes.mode() {
             FieldMode::Plain => quote_spanned! {field.span()=>
-                .field(&self.#index)
+                __output.field(&self.#index);
             },
             FieldMode::Level(_) | FieldMode::Nested | FieldMode::Map => {
                 let helper = field_assertion::helper_name(
@@ -345,7 +317,11 @@ fn unnamed_format_body(
                     immutable_trait_name(attributes.mode()),
                 );
                 quote_spanned! {field.span()=>
-                    .field(&#helper(&self.#index, session))
+                    let __field_view = #helper(
+                        &self.#index,
+                        __scope.session(),
+                    );
+                    __output.field(&__field_view);
                 }
             }
             FieldMode::Json => {
@@ -356,19 +332,30 @@ fn unnamed_format_body(
                     immutable_trait_name(attributes.mode()),
                 );
                 quote_spanned! {field.span()=>
-                    .field(
-                        &#runtime::__qubit_redact_json!(#helper(&self.#index, session)),
-                    )
+                    let __field_view = #runtime::__qubit_redact_json!(#helper(
+                        &self.#index,
+                        __scope.session(),
+                    ));
+                    __output.field(&__field_view);
                 }
             }
-            FieldMode::Skip => TokenStream::new(),
+            FieldMode::Skip => return TokenStream::new(),
+        };
+        quote_spanned! {field.span()=>
+            if __scope.admit_field()
+                == #runtime::policy::DomainTraversalAdmission::Render
+            {
+                #admitted
+            } else {
+                __output.field(&#runtime::domain::DomainTruncated);
+                return __output.finish();
+            }
         }
     });
     quote! {
-        formatter
-            .debug_tuple(stringify!(#type_name))
-            #(#field_calls)*
-            .finish()
+        let mut __output = formatter.debug_tuple(stringify!(#type_name));
+        #(#field_calls)*
+        __output.finish()
     }
 }
 
@@ -454,10 +441,13 @@ fn enum_immutable_assertions(
 ///
 /// * `type_name` - Enum receiving the generated implementation.
 /// * `variants` - Parsed variants in declaration order.
+/// * `runtime` - Resolved path to the runtime crate.
 ///
 /// # Returns
 ///
-/// A complete match expression preserving each variant's debug shape.
+/// A complete match expression preserving each variant's debug shape. The
+/// enum is admitted before its discriminant is matched; variant fields are
+/// subsequently admitted one at a time before their bindings are formatted.
 fn enum_format_body(
     type_name: &Ident,
     variants: &[VariantData<'_>],
@@ -478,6 +468,11 @@ fn enum_format_body(
         }
     });
     quote! {
+        let #runtime::policy::DomainValueAdmission::Entered(mut __scope) =
+            session.enter_domain_value()
+        else {
+            return formatter.write_str("<truncated>");
+        };
         match self {
             #(#arms)*
         }
@@ -492,10 +487,12 @@ fn enum_format_body(
 /// * `variant_index` - Zero-based declaration index of the owning variant.
 /// * `variant_name` - Variant name shown in formatter output.
 /// * `fields` - Parsed named fields in source order.
+/// * `runtime` - Resolved path to the runtime crate.
 ///
 /// # Returns
 ///
-/// A match arm using `DebugStruct` semantics.
+/// A match arm using `DebugStruct` semantics. The generated arm performs each
+/// admission before evaluating the corresponding bound field expression.
 fn enum_named_format_arm(
     type_name: &Ident,
     variant_index: u32,
@@ -516,9 +513,9 @@ fn enum_named_format_arm(
         let identifier = parsed.identifier();
         let mode = parsed.attributes().mode();
         let field_name = identifier.to_string();
-        match mode {
+        let admitted = match mode {
             FieldMode::Plain => quote_spanned! {field.span()=>
-                .field(#field_name, #identifier)
+                __output.field(#field_name, #identifier);
             },
             FieldMode::Level(_) | FieldMode::Nested | FieldMode::Map => {
                 let context = variant_field_context(variant_index, variant_name, &field_name);
@@ -529,7 +526,11 @@ fn enum_named_format_arm(
                     immutable_trait_name(mode),
                 );
                 quote_spanned! {field.span()=>
-                    .field(#field_name, &#helper(#identifier, session))
+                    let __field_view = #helper(
+                        #identifier,
+                        __scope.session(),
+                    );
+                    __output.field(#field_name, &__field_view);
                 }
             }
             FieldMode::Json => {
@@ -541,20 +542,35 @@ fn enum_named_format_arm(
                     immutable_trait_name(mode),
                 );
                 quote_spanned! {field.span()=>
-                    .field(
+                    let __field_view = #runtime::__qubit_redact_json!(#helper(
+                        #identifier,
+                        __scope.session(),
+                    ));
+                    __output.field(
                         #field_name,
-                        &#runtime::__qubit_redact_json!(#helper(#identifier, session)),
-                    )
+                        &__field_view,
+                    );
                 }
             }
-            FieldMode::Skip => TokenStream::new(),
+            FieldMode::Skip => return TokenStream::new(),
+        };
+        quote_spanned! {field.span()=>
+            if __scope.admit_field()
+                == #runtime::policy::DomainTraversalAdmission::Render
+            {
+                #admitted
+            } else {
+                __output.field("...", &#runtime::domain::DomainTruncated);
+                return __output.finish();
+            }
         }
     });
     quote! {
-        Self::#variant_name { #(#patterns),* } => formatter
-            .debug_struct(stringify!(#variant_name))
+        Self::#variant_name { #(#patterns),* } => {
+            let mut __output = formatter.debug_struct(stringify!(#variant_name));
             #(#field_calls)*
-            .finish(),
+            __output.finish()
+        },
     }
 }
 
@@ -566,10 +582,12 @@ fn enum_named_format_arm(
 /// * `variant_index` - Zero-based declaration index of the owning variant.
 /// * `variant_name` - Variant name shown in formatter output.
 /// * `fields` - Parsed positional fields in source order.
+/// * `runtime` - Resolved path to the runtime crate.
 ///
 /// # Returns
 ///
-/// A match arm using `DebugTuple` semantics.
+/// A match arm using `DebugTuple` semantics. Each positional binding remains
+/// untouched until its domain-field admission succeeds.
 fn enum_unnamed_format_arm(
     type_name: &Ident,
     variant_index: u32,
@@ -597,9 +615,9 @@ fn enum_unnamed_format_arm(
     let field_calls = fields.iter().zip(&bindings).map(|(parsed, binding)| {
         let field = parsed.field();
         let mode = parsed.attributes().mode();
-        match mode {
+        let admitted = match mode {
             FieldMode::Plain => quote_spanned! {field.span()=>
-                .field(#binding)
+                __output.field(#binding);
             },
             FieldMode::Level(_) | FieldMode::Nested | FieldMode::Map => {
                 let field_name = parsed.index().index.to_string();
@@ -611,7 +629,11 @@ fn enum_unnamed_format_arm(
                     immutable_trait_name(mode),
                 );
                 quote_spanned! {field.span()=>
-                    .field(&#helper(#binding, session))
+                    let __field_view = #helper(
+                        #binding,
+                        __scope.session(),
+                    );
+                    __output.field(&__field_view);
                 }
             }
             FieldMode::Json => {
@@ -624,19 +646,32 @@ fn enum_unnamed_format_arm(
                     immutable_trait_name(mode),
                 );
                 quote_spanned! {field.span()=>
-                    .field(
-                        &#runtime::__qubit_redact_json!(#helper(#binding, session)),
-                    )
+                    let __field_view = #runtime::__qubit_redact_json!(#helper(
+                        #binding,
+                        __scope.session(),
+                    ));
+                    __output.field(&__field_view);
                 }
             }
-            FieldMode::Skip => TokenStream::new(),
+            FieldMode::Skip => return TokenStream::new(),
+        };
+        quote_spanned! {field.span()=>
+            if __scope.admit_field()
+                == #runtime::policy::DomainTraversalAdmission::Render
+            {
+                #admitted
+            } else {
+                __output.field(&#runtime::domain::DomainTruncated);
+                return __output.finish();
+            }
         }
     });
     quote! {
-        Self::#variant_name(#(#patterns),*) => formatter
-            .debug_tuple(stringify!(#variant_name))
+        Self::#variant_name(#(#patterns),*) => {
+            let mut __output = formatter.debug_tuple(stringify!(#variant_name));
             #(#field_calls)*
-            .finish(),
+            __output.finish()
+        },
     }
 }
 
