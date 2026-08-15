@@ -7,7 +7,7 @@
 // =============================================================================
 //! Tests for internally tagged redacted enum serialization.
 
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 /// Nested object merged into an internally tagged newtype variant.
 #[derive(Redact)]

@@ -21,3 +21,21 @@ fn test_redact_expansion_preserves_enum_shapes() {
 fn test_redact_expansion_forwards_mutable_session_to_map_fields() {
     support::assertions::assert_named_redaction();
 }
+
+/// Verifies field admission occurs before plain or skipped field access.
+#[test]
+fn test_redact_expansion_admits_fields_before_access() {
+    support::assertions::assert_field_admission_precedes_access();
+}
+
+/// Verifies nested derives reuse the parent session and depth budget.
+#[test]
+fn test_redact_expansion_reuses_session_for_nested_fields() {
+    support::assertions::assert_nested_admission_uses_shared_session();
+}
+
+/// Verifies tuple structs retain their complete safe structure.
+#[test]
+fn test_redact_expansion_preserves_tuple_struct_shape() {
+    support::assertions::assert_tuple_redaction();
+}

@@ -7,7 +7,7 @@
 // =============================================================================
 //! Tests for redacted field carriers and serialization conditions.
 
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 /// Record with redacted, conditional, and always-skipped carriers.
 #[derive(Redact)]

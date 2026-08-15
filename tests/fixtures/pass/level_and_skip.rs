@@ -7,7 +7,7 @@
 // =============================================================================
 //! Pass fixture for explicit level masking and bound-free skipped fields.
 
-use qubit_redact::Redact as RedactTrait;
+use qubit_redact::domain::Redact as RedactTrait;
 use qubit_redact_derive::Redact;
 
 /// Marker that intentionally has no `Debug` implementation.

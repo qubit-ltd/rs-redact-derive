@@ -9,7 +9,7 @@
 
 use std::fmt;
 
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact::RedactionPolicy;
 use qubit_redact_derive::Redact;
 

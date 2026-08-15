@@ -30,7 +30,7 @@ qubit-redact-derive = "0.5"
 ```
 
 ```rust
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]
@@ -59,7 +59,7 @@ fn main() {
 同一个 derive 默认也生成 `RedactMut` 能力：
 
 ```rust
-use qubit_redact::RedactMut as _;
+use qubit_redact::domain::RedactMut as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]

@@ -7,8 +7,8 @@
 // =============================================================================
 //! Compile-pass fixture for inferred field capability bounds.
 
-use qubit_redact::Redact as _;
-use qubit_redact::RedactMut as _;
+use qubit_redact::domain::Redact as _;
+use qubit_redact::domain::RedactMut as _;
 use qubit_redact_derive::Redact;
 
 /// The derive supplies the bounds required by its selected field modes.

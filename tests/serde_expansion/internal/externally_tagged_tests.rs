@@ -7,7 +7,7 @@
 // =============================================================================
 //! Tests for externally tagged redacted enum serialization.
 
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 /// Externally tagged enum covering every field shape.
 #[derive(Redact)]

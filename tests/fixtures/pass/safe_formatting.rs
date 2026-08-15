@@ -7,6 +7,11 @@
 // =============================================================================
 //! Pass fixture for generated safe `Debug` and `Display` implementations.
 
+use std::fmt;
+
+use qubit_redact::domain::Redact as _;
+use qubit_redact::policy::DomainRedactionLimits;
+use qubit_redact::RedactionPolicy;
 use qubit_redact_derive::Redact;
 
 /// Marker that intentionally implements no formatting trait.
@@ -36,6 +41,25 @@ struct DisplayOnly {
     secret: String,
 }
 
+/// Debug value that must remain untouched after admission is rejected.
+struct PanicDebug;
+
+impl fmt::Debug for PanicDebug {
+    /// Panics if generated code formats an unadmitted field.
+    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        panic!("an unadmitted field must not be formatted");
+    }
+}
+
+/// Record that reaches its node ceiling before the second field.
+#[derive(Redact)]
+struct Guarded {
+    /// Field admitted after the root value.
+    visible: &'static str,
+    /// Field rejected before its debug implementation can run.
+    blocked: PanicDebug,
+}
+
 /// Exercises every generated trait implementation.
 fn main() {
     let value = Credentials {
@@ -44,12 +68,38 @@ fn main() {
         ignored: NoFormatting,
     };
     let _ = &value.ignored;
-    let _ = format!("{value:?}");
+    assert_eq!(
+        format!("{value:?}"),
+        r#"Credentials { visible: "visible", password: "<redacted>" }"#,
+    );
     let _ = format!("{value:#?}");
-    let _ = format!("{value}");
+    assert_eq!(
+        format!("{value}"),
+        r#"Credentials { visible: "visible", password: "<redacted>" }"#,
+    );
 
     let display_only = DisplayOnly {
         secret: "raw-secret".to_owned(),
     };
-    let _ = format!("{display_only}");
+    assert_eq!(
+        format!("{display_only}"),
+        r#"DisplayOnly { secret: "<redacted>" }"#,
+    );
+
+    let mut builder = RedactionPolicy::builder();
+    builder.limits().domain(
+        DomainRedactionLimits::new(2, 1, 1)
+            .expect("the fixture domain limits should be valid"),
+    );
+    let policy = builder
+        .build()
+        .expect("the fixture redaction policy should be valid");
+    let guarded = Guarded {
+        visible: "visible",
+        blocked: PanicDebug,
+    };
+    assert_eq!(
+        format!("{:?}", guarded.redacted_with(&policy)),
+        r#"Guarded { visible: "visible", ...: <truncated> }"#,
+    );
 }
