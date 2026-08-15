@@ -176,9 +176,12 @@ struct JsonRecord {
 
 /// Verifies named structs preserve all admitted safe fields.
 pub fn assert_named_redaction() {
-    let policy = RedactionPolicy::builder()
+    let mut builder = RedactionPolicy::builder();
+    builder
+        .fields()
         .raise("token", Sensitivity::Secret)
-        .expect("the named-record token rule should be valid")
+        .expect("the named-record token rule should be valid");
+    let policy = builder
         .build()
         .expect("the named-record policy should be valid");
     let value = NamedRecord {
@@ -330,9 +333,12 @@ fn policy_with_domain_limits(
 
 /// Verifies every accepted sensitivity literal reaches the runtime model.
 pub fn assert_sensitivity_expansion() {
-    let policy = RedactionPolicy::builder()
+    let mut builder = RedactionPolicy::builder();
+    builder
+        .fields()
         .raise("field", Sensitivity::Secret)
-        .expect("the sensitivity assertion field must be valid")
+        .expect("the sensitivity assertion field must be valid");
+    let policy = builder
         .build()
         .expect("the sensitivity assertion policy is valid");
 
@@ -378,11 +384,12 @@ pub fn assert_serde_adapter_expansion() {
 /// Verifies JSON redaction reaches every generated integration boundary.
 #[cfg(feature = "test-json")]
 pub fn assert_json_expansion() {
-    let policy = RedactionPolicy::builder()
+    let mut builder = RedactionPolicy::builder();
+    builder
+        .fields()
         .raise("password", Sensitivity::Secret)
-        .expect("the JSON policy field should be valid")
-        .build()
-        .expect("the JSON policy should build");
+        .expect("the JSON policy field should be valid");
+    let policy = builder.build().expect("the JSON policy should build");
     let raw = r#"{"password":"raw-password","name":"Ada"}"#;
     let mut value = JsonRecord {
         document: raw.to_owned(),

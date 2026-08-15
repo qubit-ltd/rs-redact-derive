@@ -7,8 +7,8 @@
 // =============================================================================
 //! Integration tests for the unified `Redact` derive.
 
-use qubit_redact::Redact as _;
-use qubit_redact::RedactMut as _;
+use qubit_redact::domain::Redact as _;
+use qubit_redact::domain::RedactMut as _;
 use qubit_redact_derive::Redact;
 /// A domain value receiving both immutable and mutable capabilities from one
 /// derive.
@@ -67,7 +67,8 @@ fn test_redact_derive_combined_format_and_serde_integrations() {
 
     let debug = format!("{user:?}");
     let display = format!("{user}");
-    let json = serde_json::to_string(&user).expect("direct redacted serialization should succeed");
+    let json = serde_json::to_string(&user)
+        .expect("direct redacted serialization should succeed");
 
     assert!(!debug.contains("raw-password"));
     assert!(!display.contains("raw-password"));

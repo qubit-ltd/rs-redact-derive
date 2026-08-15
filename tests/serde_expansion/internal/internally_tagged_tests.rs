@@ -7,7 +7,7 @@
 // =============================================================================
 //! Tests for internally tagged redacted enum serialization.
 
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 /// Nested object merged into an internally tagged newtype variant.
 #[derive(Redact)]
@@ -58,13 +58,18 @@ fn test_serde_internal_enum_merges_content_beside_tag() {
         }),
     );
     assert_eq!(
-        serde_json::to_value(InternalEvent::Nested(InternalPayload { value: "shown" }).redacted(),)
-            .expect("internal nested variant serializes"),
+        serde_json::to_value(
+            InternalEvent::Nested(InternalPayload { value: "shown" })
+                .redacted(),
+        )
+        .expect("internal nested variant serializes"),
         serde_json::json!({"kind": "Nested", "value": "shown"}),
     );
     assert_eq!(
-        serde_json::to_value(InternalEvent::Empty(String::from("raw-omitted")).redacted())
-            .expect("internal empty variant serializes"),
+        serde_json::to_value(
+            InternalEvent::Empty(String::from("raw-omitted")).redacted()
+        )
+        .expect("internal empty variant serializes"),
         serde_json::json!({"kind": "Empty"}),
     );
     assert_eq!(

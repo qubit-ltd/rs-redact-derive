@@ -111,7 +111,7 @@ pub(super) fn serialized_carrier(
         }
         FieldMode::Json => quote_spanned! {field.span()=>
             #runtime::__qubit_redact_json! {
-                #runtime::RedactedJsonText::new(#raw, policy)
+                #runtime::json::RedactedJsonText::new(#raw, policy)
             }
         },
         FieldMode::Skip => TokenStream::new(),

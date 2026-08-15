@@ -7,7 +7,7 @@
 // =============================================================================
 //! Tests for redacted field carriers and serialization conditions.
 
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 /// Record with redacted, conditional, and always-skipped carriers.
 #[derive(Redact)]
@@ -39,7 +39,8 @@ fn test_serde_field_serialization_applies_carriers_and_conditions() {
     };
 
     assert_eq!(
-        serde_json::to_value(empty.redacted()).expect("conditional empty record serializes"),
+        serde_json::to_value(empty.redacted())
+            .expect("conditional empty record serializes"),
         serde_json::json!({"secret": "<redacted>"}),
     );
     assert_eq!(

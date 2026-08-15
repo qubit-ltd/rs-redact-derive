@@ -102,7 +102,8 @@ fn test_crate_path_resolve_wraps_lookup_error_with_context() {
         crate_name: "qubit-redact".to_owned(),
         path: PathBuf::from("/fixture/Cargo.toml"),
     };
-    let result = crate_path::resolve(&input, Err(error), itself, "runtime lookup");
+    let result =
+        crate_path::resolve(&input, Err(error), itself, "runtime lookup");
 
     let error = match result {
         Ok(_) => panic!("failed lookup should produce a syntax error"),

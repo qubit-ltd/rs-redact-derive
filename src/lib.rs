@@ -30,10 +30,10 @@ use syn::parse;
 ///
 /// # Returns
 ///
-/// Implementations of `qubit_redact::Redact` and, unless disabled by
-/// `#[redact(no_mut)]`, `qubit_redact::RedactMut`, plus any requested optional
-/// formatting or serialization implementations. Invalid input produces a
-/// targeted compile error.
+/// Implementations of `qubit_redact::domain::Redact` and, unless disabled by
+/// `#[redact(no_mut)]`, `qubit_redact::domain::RedactMut`, plus any requested
+/// optional formatting or serialization implementations. Invalid input
+/// produces a targeted compile error.
 #[proc_macro_derive(Redact, attributes(redact, serde))]
 #[inline(always)]
 pub fn derive_redact(input: TokenStream) -> TokenStream {

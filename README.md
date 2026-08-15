@@ -37,7 +37,7 @@ qubit-redact-derive = "0.5"
 ```
 
 ```rust
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]
@@ -66,7 +66,7 @@ available to application logic. The same derive also generates the
 `RedactMut` capability:
 
 ```rust
-use qubit_redact::{Redact as _, RedactMut as _};
+use qubit_redact::domain::{Redact as _, RedactMut as _};
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]

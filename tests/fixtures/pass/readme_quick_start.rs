@@ -7,19 +7,27 @@
 // =============================================================================
 //! Compiles the quick-start example published in the derive crate README.
 
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 
 /// Credentials whose password is redacted at the secret level.
 #[derive(Redact)]
 struct Credentials {
+    /// User name that remains visible.
+    user: String,
     /// Password protected by the generated redaction implementation.
     #[redact(level = "secret")]
     password: String,
 }
 
-/// Keeps the quick-start type reachable in the fixture crate.
+/// Verifies the quick-start output preserves the complete safe structure.
 fn main() {
-    let _credentials = Credentials {
+    let credentials = Credentials {
+        user: String::from("ada"),
         password: String::from("raw-password"),
     };
+    assert_eq!(
+        format!("{:?}", credentials.redacted()),
+        r#"Credentials { user: "ada", password: "<redacted>" }"#,
+    );
 }

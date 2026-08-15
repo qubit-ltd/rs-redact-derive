@@ -55,7 +55,7 @@ derive macro, `Redact`; import runtime traits separately when calling their
 extension methods:
 
 ```rust
-use qubit_redact::{Redact as _, RedactMut as _};
+use qubit_redact::domain::{Redact as _, RedactMut as _};
 use qubit_redact_derive::Redact;
 ```
 
@@ -82,7 +82,7 @@ owned sensitive fields.
 Start with a field that should always be masked at a known sensitivity:
 
 ```rust
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]
@@ -138,7 +138,7 @@ The following type demonstrates every immutable mode:
 ```rust
 use std::collections::BTreeMap;
 
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]
@@ -189,7 +189,7 @@ named, tuple, and unit variants. Field annotations work in every supported
 shape.
 
 ```rust
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]
@@ -224,7 +224,7 @@ fields marked `level`, `nested`, or `map`; plain and `skip` fields remain
 unchanged. Add `#[redact(no_mut)]` to generate only immutable redaction.
 
 ```rust
-use qubit_redact::RedactMut as _;
+use qubit_redact::domain::RedactMut as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]
@@ -292,7 +292,7 @@ serialization of the original type is redacted; `Redacted<T>` also serializes
 but does not deserialize.
 
 ```rust
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]

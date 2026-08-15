@@ -118,7 +118,7 @@ pub(crate) fn immutable(
                     value: &'a ::std::string::String,
                     session: &'s mut #runtime::RedactionSession<'p>,
                 ) -> #runtime::LogSafeText<'static> {
-                    session.json().redact_text(value)
+                    session.json().redact_text(value).into_log_safe_text()
                 }
             }
         },
@@ -272,7 +272,7 @@ pub(crate) fn mutable(
                     value: &mut ::std::string::String,
                     policy: &#runtime::RedactionPolicy,
                 ) {
-                    #runtime::redact_json_text_in_place(value, policy);
+                    #runtime::json::redact_json_text_in_place(value, policy);
                 }
             }
         },
@@ -365,8 +365,8 @@ pub(crate) fn serialization(
                 fn #helper<'a>(
                     value: &'a ::std::string::String,
                     policy: &'a #runtime::RedactionPolicy,
-                ) -> #runtime::RedactedJsonText<'a, 'a> {
-                    #runtime::RedactedJsonText::new(value, policy)
+                ) -> #runtime::json::RedactedJsonText<'a, 'a> {
+                    #runtime::json::RedactedJsonText::new(value, policy)
                 }
             }
         },
