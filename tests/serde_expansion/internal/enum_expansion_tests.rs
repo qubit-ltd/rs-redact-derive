@@ -7,7 +7,7 @@
 // =============================================================================
 //! Tests for enum dispatch and skipped-variant errors.
 
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 /// Enum whose selected variants are explicitly excluded from serialization.
 #[derive(Redact)]
@@ -43,9 +43,11 @@ fn test_serde_enum_dispatch_rejects_selected_skipped_variants() {
             "cannot serialize skipped redacted variant `Named`",
         ),
         (
-            serde_json::to_value(SkippedVariants::Tuple(String::from("raw")).redacted())
-                .expect_err("a selected skipped tuple variant is rejected")
-                .to_string(),
+            serde_json::to_value(
+                SkippedVariants::Tuple(String::from("raw")).redacted(),
+            )
+            .expect_err("a selected skipped tuple variant is rejected")
+            .to_string(),
             "cannot serialize skipped redacted variant `Tuple`",
         ),
         (

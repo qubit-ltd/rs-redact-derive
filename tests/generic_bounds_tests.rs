@@ -7,8 +7,8 @@
 // =============================================================================
 //! Integration tests for inferred generic capability bounds.
 
-use qubit_redact::Redact as _;
-use qubit_redact::RedactMut as _;
+use qubit_redact::domain::Redact as _;
+use qubit_redact::domain::RedactMut as _;
 use qubit_redact_derive::Redact;
 /// Generic fields receive only the bounds required by their selected modes.
 #[derive(Redact)]
@@ -30,7 +30,7 @@ fn test_generic_bounds_are_inferred() {
     };
 
     let _ = format!("{:?}", record.redacted());
-    let _ =
-        serde_json::to_value(record.redacted()).expect("generic redacted serialization succeeds");
+    let _ = serde_json::to_value(record.redacted())
+        .expect("generic redacted serialization succeeds");
     record.redact_in_place();
 }

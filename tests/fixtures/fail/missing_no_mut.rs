@@ -7,7 +7,7 @@
 // =============================================================================
 //! Compile-fail fixture for missing `no_mut` on borrowed sensitive data.
 
-use qubit_redact::RedactMut as _;
+use qubit_redact::domain::RedactMut as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]

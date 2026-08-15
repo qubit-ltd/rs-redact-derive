@@ -61,7 +61,7 @@ pub(crate) fn expand(
     let (impl_generics, type_generics, where_clause) = redaction_generics.split_for_impl();
 
     Ok(quote! {
-        impl #impl_generics #runtime::RedactMut for #name #type_generics #where_clause {
+        impl #impl_generics #runtime::domain::RedactMut for #name #type_generics #where_clause {
             fn redact_in_place_with(&mut self, policy: &#runtime::RedactionPolicy) {
                 let _ = policy;
                 #(#mutable_assertions)*

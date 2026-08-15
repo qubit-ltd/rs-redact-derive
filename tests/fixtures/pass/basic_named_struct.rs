@@ -9,7 +9,7 @@
 
 use std::fmt::Debug;
 
-use qubit_redact::Redact as RedactTrait;
+use qubit_redact::domain::Redact as RedactTrait;
 use qubit_redact_derive::Redact;
 
 /// A generic record that retains its original where clause.
@@ -24,11 +24,14 @@ where
     name: String,
 }
 
-/// Exercises the generated implementation's fail-closed diagnostic boundary.
+/// Exercises the generated implementation's complete admitted structure.
 fn main() {
     let value = GenericRecord {
         id: 7_u64,
         name: "Alice".to_owned(),
     };
-    assert_eq!(format!("{:?}", value.redacted()), "<truncated>",);
+    assert_eq!(
+        format!("{:?}", value.redacted()),
+        r#"GenericRecord { id: 7, name: "Alice" }"#,
+    );
 }
