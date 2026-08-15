@@ -1,10 +1,10 @@
 error[E0277]: mutable redaction capability is not implemented for &'a str
-  --> tests/fixtures/fail/missing_no_mut.rs:23:10
+  --> tests/fixtures/fail/missing_no_mut.rs:13:10
    |
-23 | #[derive(Redact)]
+13 | #[derive(Redact)]
    |          ^^^^^^ this field cannot be redacted in place
-24 | struct BorrowedUser<'a> {
-25 |     #[redact(level = "secret")]
+14 | struct BorrowedUser<'a> {
+15 |     #[redact(level = "secret")]
    |     - required by a bound introduced by this call
    |
    = help: the trait `RedactValueMut` is not implemented for `&'a str`
@@ -15,16 +15,16 @@ help: the trait `RedactValueMut` is implemented for `String`
    | impl RedactValueMut for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required for `&'a str` to implement `__qubit_redact_BorrowedUser_password_requires_RedactValueMutCapability`
-  --> tests/fixtures/fail/missing_no_mut.rs:25:5
+  --> tests/fixtures/fail/missing_no_mut.rs:15:5
    |
-23 | #[derive(Redact)]
+13 | #[derive(Redact)]
    |          ------ unsatisfied trait bound introduced here
-24 | struct BorrowedUser<'a> {
-25 |     #[redact(level = "secret")]
+14 | struct BorrowedUser<'a> {
+15 |     #[redact(level = "secret")]
    |     ^
 note: required by a bound in `__qubit_redact_BorrowedUser_password_requires_RedactValueMut`
-  --> tests/fixtures/fail/missing_no_mut.rs:25:5
+  --> tests/fixtures/fail/missing_no_mut.rs:15:5
    |
-25 |     #[redact(level = "secret")]
+15 |     #[redact(level = "secret")]
    |     ^ required by this bound in `__qubit_redact_BorrowedUser_password_requires_RedactValueMut`
    = note: this error originates in the derive macro `Redact` (in Nightly builds, run with -Z macro-backtrace for more info)
