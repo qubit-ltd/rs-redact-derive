@@ -7,7 +7,7 @@
 // =============================================================================
 //! Tests for adjacently tagged redacted enum serialization.
 
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 /// Adjacently tagged enum covering content-bearing and empty variants.
 #[derive(Redact)]

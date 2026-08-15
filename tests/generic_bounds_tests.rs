@@ -7,8 +7,8 @@
 // =============================================================================
 //! Integration tests for inferred generic capability bounds.
 
-use qubit_redact::Redact as _;
-use qubit_redact::RedactMut as _;
+use qubit_redact::domain::Redact as _;
+use qubit_redact::domain::RedactMut as _;
 use qubit_redact_derive::Redact;
 /// Generic fields receive only the bounds required by their selected modes.
 #[derive(Redact)]

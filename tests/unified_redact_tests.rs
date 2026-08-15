@@ -3,22 +3,12 @@
 //
 //    SPDX-License-Identifier: Apache-2.0
 //
-//    Licensed under the Apache License, Version 2.0 (the "License");
-//    you may not use this file except in compliance with the License.
-//    You may obtain a copy of the License at
-//
-//        http://www.apache.org/licenses/LICENSE-2.0
-//
-//    Unless required by applicable law or agreed to in writing, software
-//    distributed under the License is distributed on an "AS IS" BASIS,
-//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//    See the License for the specific language governing permissions and
-//    limitations under the License.
+//    Licensed under the Apache License, Version 2.0.
 // =============================================================================
 //! Integration tests for the unified `Redact` derive.
 
-use qubit_redact::Redact as _;
-use qubit_redact::RedactMut as _;
+use qubit_redact::domain::Redact as _;
+use qubit_redact::domain::RedactMut as _;
 use qubit_redact_derive::Redact;
 /// A domain value receiving both immutable and mutable capabilities from one
 /// derive.

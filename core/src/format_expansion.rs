@@ -43,7 +43,7 @@ pub(crate) fn expand(
                     &self,
                     formatter: &mut ::core::fmt::Formatter<'_>,
                 ) -> ::core::fmt::Result {
-                    let redacted = <Self as #runtime::Redact>::redacted(self);
+                    let redacted = <Self as #runtime::domain::Redact>::redacted(self);
                     ::core::fmt::Debug::fmt(&redacted, formatter)
                 }
             }
@@ -57,7 +57,7 @@ pub(crate) fn expand(
                     &self,
                     formatter: &mut ::core::fmt::Formatter<'_>,
                 ) -> ::core::fmt::Result {
-                    let redacted = <Self as #runtime::Redact>::redacted(self);
+                    let redacted = <Self as #runtime::domain::Redact>::redacted(self);
                     ::core::fmt::Display::fmt(&redacted, formatter)
                 }
             }

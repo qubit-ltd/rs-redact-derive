@@ -9,7 +9,7 @@
 
 use std::collections::HashMap;
 
-use qubit_redact::RedactMut as RedactMutTrait;
+use qubit_redact::domain::RedactMut as RedactMutTrait;
 use qubit_redact_derive::Redact;
 
 /// Owned fields supported by destructive redaction.

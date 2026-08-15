@@ -7,7 +7,7 @@
 // =============================================================================
 //! Tests for enum dispatch and skipped-variant errors.
 
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 /// Enum whose selected variants are explicitly excluded from serialization.
 #[derive(Redact)]

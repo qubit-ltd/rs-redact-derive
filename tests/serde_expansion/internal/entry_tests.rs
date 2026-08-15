@@ -7,7 +7,7 @@
 // =============================================================================
 //! Tests for the public derive entry into redacted Serde expansion.
 
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 /// Borrowed record proving generated Serde implementations preserve generics.
 #[derive(Redact)]

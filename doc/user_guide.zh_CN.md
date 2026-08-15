@@ -50,7 +50,7 @@ JSON 脱敏和 Serde 时，应同时启用两个 feature：
 derive；调用扩展方法时分别导入运行时 trait：
 
 ```rust
-use qubit_redact::{Redact as _, RedactMut as _};
+use qubit_redact::domain::{Redact as _, RedactMut as _};
 use qubit_redact_derive::Redact;
 ```
 
@@ -75,7 +75,7 @@ use qubit_redact_derive::Redact;
 从一个已知敏感等级的字段开始：
 
 ```rust
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]
@@ -127,7 +127,7 @@ fn main() {
 ```rust
 use std::collections::BTreeMap;
 
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]
@@ -172,7 +172,7 @@ JSON 字符串；不会把字段转换为 `serde_json::Value`。无效 JSON 会�
 字段属性可用于所有受支持形态。
 
 ```rust
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]
@@ -206,7 +206,7 @@ union 会被拒绝。生成实现会保留泛型参数和 where clause，Rust �
 `#[redact(no_mut)]` 可只生成 immutable 脱敏。
 
 ```rust
-use qubit_redact::RedactMut as _;
+use qubit_redact::domain::RedactMut as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]
@@ -270,7 +270,7 @@ fn main() {
 `Redacted<T>` 也支持序列化，但不反序列化。
 
 ```rust
-use qubit_redact::Redact as _;
+use qubit_redact::domain::Redact as _;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]

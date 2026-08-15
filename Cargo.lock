@@ -69,12 +69,13 @@ dependencies = [
 
 [[package]]
 name = "qubit-json"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "qubit-budget",
  "serde",
  "serde_json",
  "thiserror",
+ "zmij",
 ]
 
 [[package]]
