@@ -30,7 +30,7 @@ fn test_generic_bounds_are_inferred() {
     };
 
     let _ = format!("{:?}", record.redacted());
-    let _ = serde_json::to_value(record.redacted())
-        .expect("generic redacted serialization succeeds");
+    let _ =
+        serde_json::to_value(record.redacted()).expect("generic redacted serialization succeeds");
     record.redact_in_place();
 }

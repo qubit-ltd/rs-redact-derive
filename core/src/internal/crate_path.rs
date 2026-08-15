@@ -44,11 +44,7 @@ pub(crate) fn resolve(
     match result {
         Ok(FoundCrate::Itself) => Ok(itself),
         Ok(FoundCrate::Name(name)) => {
-            let identifier = format_ident!(
-                "{}",
-                name.replace('-', "_"),
-                span = Span::call_site()
-            );
+            let identifier = format_ident!("{}", name.replace('-', "_"), span = Span::call_site());
             Ok(parse_quote!(::#identifier))
         }
         Err(error) => Err(Error::new_spanned(
