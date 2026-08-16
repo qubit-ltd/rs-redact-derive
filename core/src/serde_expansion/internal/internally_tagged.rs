@@ -131,7 +131,7 @@ pub(super) fn internal_variant_arm(
                     Self::#rust_name #pattern => {
                         #(#setups)*
                         if let ::core::option::Option::Some(carrier) = #carrier.as_ref() {
-                            #runtime::__private::serialize_internally_tagged(
+                            #runtime::internal::serialize_internally_tagged(
                                 serializer,
                                 #enum_name,
                                 stringify!(#rust_name),

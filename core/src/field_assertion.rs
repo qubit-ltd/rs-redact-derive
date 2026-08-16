@@ -301,7 +301,7 @@ pub(crate) fn mutable(
                     value: &mut ::std::string::String,
                     policy: &#runtime::RedactionPolicy,
                 ) {
-                    #runtime::json::redact_json_text_in_place(value, policy);
+                    #runtime::formats::json::redact_json_text_in_place(value, policy);
                 }
             }
         },
@@ -351,12 +351,12 @@ pub(crate) fn serialization(
             fn #helper<'a, __QubitRedactField>(
                 value: &'a __QubitRedactField,
                 policy: &'a #runtime::RedactionPolicy,
-            ) -> #runtime::__private::RedactedSerialize<'a, __QubitRedactField>
+            ) -> #runtime::internal::RedactedSerialize<'a, __QubitRedactField>
             where
                 __QubitRedactField:
-                    #runtime::__private::RedactSerialize + ?Sized,
+                    #runtime::internal::RedactSerialize + ?Sized,
             {
-                #runtime::__private::RedactedSerialize::new(value, policy)
+                #runtime::internal::RedactedSerialize::new(value, policy)
             }
         },
         FieldMode::Map => quote_spanned! {field.span()=>
@@ -378,7 +378,7 @@ pub(crate) fn serialization(
             >
             where
                 __QubitRedactField:
-                    #runtime::__private::RedactMapSerialize<
+                    #runtime::internal::RedactMapSerialize<
                         __QubitRedactKey,
                         __QubitRedactValue,
                     > + ?Sized,
@@ -394,8 +394,8 @@ pub(crate) fn serialization(
                 fn #helper<'a>(
                     value: &'a ::std::string::String,
                     policy: &'a #runtime::RedactionPolicy,
-                ) -> #runtime::json::RedactedJsonText<'a, 'a> {
-                    #runtime::json::RedactedJsonText::new(value, policy)
+                ) -> #runtime::formats::json::RedactedJsonText<'a, 'a> {
+                    #runtime::formats::json::RedactedJsonText::new(value, policy)
                 }
             }
         },

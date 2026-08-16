@@ -79,7 +79,7 @@ pub(crate) fn expand(
 
     Ok(quote! {
         #runtime::__qubit_redact_serde! {
-            impl #impl_generics #runtime::__private::RedactSerialize
+            impl #impl_generics #runtime::internal::RedactSerialize
                 for #name #type_generics #where_clause
             {
                 fn serialize_redacted<#serializer>(
@@ -112,7 +112,7 @@ pub(crate) fn expand(
                     #serializer: #serde::Serializer,
                 {
                     let policy = #runtime::RedactionPolicy::default();
-                    <Self as #runtime::__private::RedactSerialize>::serialize_redacted(
+                    <Self as #runtime::internal::RedactSerialize>::serialize_redacted(
                         self,
                         &policy,
                         serializer,
