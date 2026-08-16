@@ -229,7 +229,7 @@ fn named_format_body(type_name: &Ident, fields: &[NamedField<'_>], runtime: &Pat
             FieldMode::Plain => quote_spanned! {field.span()=>
                 __output.field(#field_name, &self.#identifier);
             },
-            FieldMode::Level(_) | FieldMode::Nested | FieldMode::Map => {
+            FieldMode::Level(_) | FieldMode::Nested => {
                 let helper = field_assertion::helper_name(
                     type_name,
                     field,
@@ -242,6 +242,32 @@ fn named_format_body(type_name: &Ident, fields: &[NamedField<'_>], runtime: &Pat
                         __scope.session(),
                     );
                     __output.field(#field_name, &__field_view);
+                }
+            }
+            FieldMode::Map => {
+                let helper = field_assertion::helper_name(
+                    type_name,
+                    field,
+                    &field_name,
+                    immutable_trait_name(attributes.mode()),
+                );
+                if field_assertion::is_direct_option(field) {
+                    quote_spanned! {field.span()=>
+                        if let ::core::option::Option::Some(__map) = self.#identifier.as_ref() {
+                            let __field_view = #helper(__map, __scope.session());
+                            __output.field(#field_name, &::core::option::Option::Some(__field_view));
+                        } else {
+                            __output.field(#field_name, &::core::option::Option::<()>::None);
+                        }
+                    }
+                } else {
+                    quote_spanned! {field.span()=>
+                        let __field_view = #helper(
+                            &self.#identifier,
+                            __scope.session(),
+                        );
+                        __output.field(#field_name, &__field_view);
+                    }
                 }
             }
             FieldMode::Json => {
@@ -309,7 +335,7 @@ fn unnamed_format_body(
             FieldMode::Plain => quote_spanned! {field.span()=>
                 __output.field(&self.#index);
             },
-            FieldMode::Level(_) | FieldMode::Nested | FieldMode::Map => {
+            FieldMode::Level(_) | FieldMode::Nested => {
                 let helper = field_assertion::helper_name(
                     type_name,
                     field,
@@ -322,6 +348,32 @@ fn unnamed_format_body(
                         __scope.session(),
                     );
                     __output.field(&__field_view);
+                }
+            }
+            FieldMode::Map => {
+                let helper = field_assertion::helper_name(
+                    type_name,
+                    field,
+                    &field_name,
+                    immutable_trait_name(attributes.mode()),
+                );
+                if field_assertion::is_direct_option(field) {
+                    quote_spanned! {field.span()=>
+                        if let ::core::option::Option::Some(__map) = self.#index.as_ref() {
+                            let __field_view = #helper(__map, __scope.session());
+                            __output.field(&::core::option::Option::Some(__field_view));
+                        } else {
+                            __output.field(&::core::option::Option::<()>::None);
+                        }
+                    }
+                } else {
+                    quote_spanned! {field.span()=>
+                        let __field_view = #helper(
+                            &self.#index,
+                            __scope.session(),
+                        );
+                        __output.field(&__field_view);
+                    }
                 }
             }
             FieldMode::Json => {
@@ -517,7 +569,7 @@ fn enum_named_format_arm(
             FieldMode::Plain => quote_spanned! {field.span()=>
                 __output.field(#field_name, #identifier);
             },
-            FieldMode::Level(_) | FieldMode::Nested | FieldMode::Map => {
+            FieldMode::Level(_) | FieldMode::Nested => {
                 let context = variant_field_context(variant_index, variant_name, &field_name);
                 let helper = field_assertion::helper_name(
                     type_name,
@@ -531,6 +583,30 @@ fn enum_named_format_arm(
                         __scope.session(),
                     );
                     __output.field(#field_name, &__field_view);
+                }
+            }
+            FieldMode::Map => {
+                let context = variant_field_context(variant_index, variant_name, &field_name);
+                let helper = field_assertion::helper_name(
+                    type_name,
+                    field,
+                    &context,
+                    immutable_trait_name(mode),
+                );
+                if field_assertion::is_direct_option(field) {
+                    quote_spanned! {field.span()=>
+                        if let ::core::option::Option::Some(__map) = #identifier.as_ref() {
+                            let __field_view = #helper(__map, __scope.session());
+                            __output.field(#field_name, &::core::option::Option::Some(__field_view));
+                        } else {
+                            __output.field(#field_name, &::core::option::Option::<()>::None);
+                        }
+                    }
+                } else {
+                    quote_spanned! {field.span()=>
+                        let __field_view = #helper(#identifier, __scope.session());
+                        __output.field(#field_name, &__field_view);
+                    }
                 }
             }
             FieldMode::Json => {
@@ -619,7 +695,7 @@ fn enum_unnamed_format_arm(
             FieldMode::Plain => quote_spanned! {field.span()=>
                 __output.field(#binding);
             },
-            FieldMode::Level(_) | FieldMode::Nested | FieldMode::Map => {
+            FieldMode::Level(_) | FieldMode::Nested => {
                 let field_name = parsed.index().index.to_string();
                 let context = variant_field_context(variant_index, variant_name, &field_name);
                 let helper = field_assertion::helper_name(
@@ -634,6 +710,31 @@ fn enum_unnamed_format_arm(
                         __scope.session(),
                     );
                     __output.field(&__field_view);
+                }
+            }
+            FieldMode::Map => {
+                let field_name = parsed.index().index.to_string();
+                let context = variant_field_context(variant_index, variant_name, &field_name);
+                let helper = field_assertion::helper_name(
+                    type_name,
+                    field,
+                    &context,
+                    immutable_trait_name(mode),
+                );
+                if field_assertion::is_direct_option(field) {
+                    quote_spanned! {field.span()=>
+                        if let ::core::option::Option::Some(__map) = #binding.as_ref() {
+                            let __field_view = #helper(__map, __scope.session());
+                            __output.field(&::core::option::Option::Some(__field_view));
+                        } else {
+                            __output.field(&::core::option::Option::<()>::None);
+                        }
+                    }
+                } else {
+                    quote_spanned! {field.span()=>
+                        let __field_view = #helper(#binding, __scope.session());
+                        __output.field(&__field_view);
+                    }
                 }
             }
             FieldMode::Json => {

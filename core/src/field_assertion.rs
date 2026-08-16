@@ -11,15 +11,36 @@ use proc_macro2::TokenStream;
 use quote::format_ident;
 use quote::quote_spanned;
 use syn::Field;
+use syn::GenericArgument;
 use syn::GenericParam;
 use syn::Ident;
 use syn::LifetimeParam;
 use syn::Path;
+use syn::PathArguments;
+use syn::Type;
 use syn::spanned::Spanned;
 
 use crate::field_mode::FieldMode;
 use crate::generic_bounds;
 use crate::immutable_trait_name::ImmutableTraitName;
+
+/// Returns whether `field` has a direct `Option<T>` type.
+pub(crate) fn is_direct_option(field: &Field) -> bool {
+    let Type::Path(type_path) = &field.ty else {
+        return false;
+    };
+    let Some(segment) = type_path.path.segments.last() else {
+        return false;
+    };
+    if segment.ident != "Option" {
+        return false;
+    }
+    let PathArguments::AngleBracketed(arguments) = &segment.arguments else {
+        return false;
+    };
+    matches!(arguments.args.first(), Some(GenericArgument::Type(_)))
+}
+
 /// Generates the immutable capability assertion for one field.
 ///
 /// The helper name carries the owning type, field, and required trait so that

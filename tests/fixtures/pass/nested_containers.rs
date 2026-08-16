@@ -8,6 +8,7 @@
 //! Pass fixture for supported nested containers.
 
 use qubit_redact::domain::Redact as RedactTrait;
+use qubit_redact::domain::RedactMut;
 use qubit_redact::policy::DomainRedactionLimits;
 use qubit_redact::RedactionPolicy;
 use qubit_redact_derive::Redact;
@@ -23,9 +24,9 @@ struct Leaf {
 /// Container combinations supported by nested redaction.
 #[derive(Redact)]
 struct Tree {
-    /// Optional boxed leaf.
+    /// Optional nested leaf.
     #[redact(nested)]
-    selected: Option<Box<Leaf>>,
+    selected: Option<Leaf>,
     /// List of leaves.
     #[redact(nested)]
     leaves: Vec<Leaf>,
@@ -42,10 +43,30 @@ fn main() {
         "Tree { selected: None, leaves: [] }",
     );
 
-    let limited = Tree {
-        selected: Some(Box::new(Leaf {
+    let mut selected = Tree {
+        selected: Some(Leaf {
             value: "raw-secret".to_owned(),
-        })),
+        }),
+        leaves: Vec::new(),
+    };
+    assert_eq!(
+        format!("{:?}", selected.redacted()),
+        r#"Tree { selected: Some(Leaf { value: "<redacted>" }), leaves: [] }"#,
+    );
+    selected.redact_in_place();
+    assert_eq!(
+        selected
+            .selected
+            .as_ref()
+            .expect("selected leaf should remain present")
+            .value,
+        "<redacted>",
+    );
+
+    let limited = Tree {
+        selected: Some(Leaf {
+            value: "raw-secret".to_owned(),
+        }),
         leaves: Vec::new(),
     };
     let mut builder = RedactionPolicy::builder();
