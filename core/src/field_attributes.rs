@@ -100,6 +100,7 @@ impl FieldAttributes {
     /// # Returns
     ///
     /// The parsed plain, explicit-level, skip, nested, map, or JSON mode.
+    #[must_use]
     #[inline(always)]
     pub(crate) const fn mode(&self) -> &FieldMode {
         &self.mode

@@ -12,6 +12,7 @@ use syn::Generics;
 use syn::Path;
 
 /// Context shared by serialization capability assertions for one item.
+#[must_use]
 pub(crate) struct SerializationContext<'a> {
     /// Resolved path to the runtime crate.
     pub(crate) runtime: &'a Path,

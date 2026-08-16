@@ -107,7 +107,13 @@ pub(super) fn serialized_carrier(
         FieldMode::Map => {
             let helper =
                 field_assertion::helper_name(type_name, field, context, "RedactMapSerialize");
-            quote_spanned!(field.span()=> #helper(#raw, policy))
+            if field_assertion::is_direct_option(field) {
+                quote_spanned! {field.span()=>
+                    #raw.as_ref().map(|__map| #helper(__map, policy))
+                }
+            } else {
+                quote_spanned!(field.span()=> #helper(#raw, policy))
+            }
         }
         FieldMode::Json => quote_spanned! {field.span()=>
             #runtime::__qubit_redact_json! {

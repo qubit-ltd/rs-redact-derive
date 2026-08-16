@@ -45,10 +45,6 @@ use crate::internal::FieldsData;
 /// * `model` - Parsed fields and their selected redaction modes.
 /// * `runtime` - Resolved path to the runtime crate.
 ///
-/// # Errors
-///
-/// This helper does not return errors; invalid capability implementations are
-/// reported by rustc at the generated impl's field type.
 pub(crate) fn add_immutable_bounds(
     generics: &mut Generics,
     model: &ContainerData<'_>,
@@ -76,10 +72,6 @@ pub(crate) fn add_immutable_bounds(
 /// * `model` - Parsed fields and their selected redaction modes.
 /// * `runtime` - Resolved path to the runtime crate.
 ///
-/// # Errors
-///
-/// This helper does not return errors; invalid capability implementations are
-/// reported by rustc at the generated impl's field type.
 pub(crate) fn add_mutable_bounds(
     generics: &mut Generics,
     model: &ContainerData<'_>,
@@ -106,10 +98,6 @@ pub(crate) fn add_mutable_bounds(
 /// * `runtime` - Resolved path to the runtime crate.
 /// * `serde` - Resolved direct Serde dependency path.
 ///
-/// # Errors
-///
-/// This helper does not return errors; invalid capability implementations are
-/// reported by rustc at the generated impl's field type.
 pub(crate) fn add_serialization_bounds(
     generics: &mut Generics,
     model: &ContainerData<'_>,

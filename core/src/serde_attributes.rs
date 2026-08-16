@@ -213,6 +213,7 @@ impl SerdeAttributes {
     ///
     /// `Some(name)` for an explicit field rename, or `None` to use the
     /// applicable container or variant rename rule.
+    #[must_use]
     #[inline(always)]
     pub(crate) fn rename(&self) -> Option<&str> {
         self.rename.as_deref()
@@ -235,6 +236,7 @@ impl SerdeAttributes {
     ///
     /// `Some(path)` for `skip_serializing_if`, or `None` when serialization is
     /// unconditional.
+    #[must_use]
     #[inline(always)]
     pub(crate) const fn skip_serializing_if(&self) -> Option<&Path> {
         self.skip_serializing_if.as_ref()
@@ -246,6 +248,7 @@ impl SerdeAttributes {
     ///
     /// `Some(path)` for `with` or `serialize_with`, or `None` when the field
     /// uses ordinary Serde serialization.
+    #[must_use]
     #[inline(always)]
     pub(crate) const fn serialize_with(&self) -> Option<&Path> {
         self.serialize_with.as_ref()
@@ -253,6 +256,14 @@ impl SerdeAttributes {
 }
 
 /// Returns whether one field control affects deserialization only.
+///
+/// # Parameters
+///
+/// * `meta` - Nested Serde metadata item to classify.
+///
+/// # Returns
+///
+/// `true` for a supported deserialization-only control.
 fn is_deserialize_only_control(meta: &ParseNestedMeta<'_>) -> bool {
     meta.path.is_ident("default")
         || meta.path.is_ident("alias")
@@ -263,6 +274,15 @@ fn is_deserialize_only_control(meta: &ParseNestedMeta<'_>) -> bool {
 }
 
 /// Consumes one supported deserialization-only field control.
+///
+/// # Parameters
+///
+/// * `meta` - Nested Serde metadata item to validate and consume.
+///
+/// # Errors
+///
+/// Returns an error when the control uses the wrong shape or a non-string
+/// value.
 fn parse_deserialize_only_control(meta: &ParseNestedMeta<'_>) -> Result<()> {
     if meta.path.is_ident("skip_deserializing") || meta.path.is_ident("deserialize_in_place") {
         if meta.input.peek(Token![=]) || meta.input.peek(Paren) {

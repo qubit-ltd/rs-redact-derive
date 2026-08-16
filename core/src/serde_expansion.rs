@@ -9,4 +9,5 @@
 
 mod internal;
 
+/// Generates the redacted Serde implementation for one derive input.
 pub(crate) use internal::expand;
