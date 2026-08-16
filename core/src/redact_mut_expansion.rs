@@ -36,10 +36,6 @@ use crate::internal::VariantData;
 /// # Returns
 ///
 /// Generated destructive redaction implementation tokens.
-///
-/// # Errors
-///
-/// Returns generated implementation tokens.
 pub(crate) fn expand(
     input: &DeriveInput,
     runtime: &Path,

@@ -54,6 +54,21 @@ pub(crate) fn expand(input: &DeriveInput, runtime: &Path) -> Result<TokenStream>
 }
 
 /// Expands a redacted model using integrations supplied by a hosting macro.
+///
+/// # Parameters
+///
+/// * `input` - Complete derive input to expand.
+/// * `runtime` - Resolved path to the `qubit-redact` runtime crate.
+/// * `options` - Optional formatting and serialization integrations to emit.
+///
+/// # Returns
+///
+/// Generated immutable, mutable, formatting, and serialization implementations.
+///
+/// # Errors
+///
+/// Returns a targeted syntax error when the input shape or enabled attributes
+/// are invalid.
 pub(crate) fn expand_with_options(
     input: &DeriveInput,
     runtime: &Path,
@@ -65,6 +80,21 @@ pub(crate) fn expand_with_options(
 }
 
 /// Generates the implementation from already-validated container controls.
+///
+/// # Parameters
+///
+/// * `input` - Complete derive input to expand.
+/// * `runtime` - Resolved path to the `qubit-redact` runtime crate.
+/// * `container_attributes` - Validated controls selected for the expansion.
+///
+/// # Returns
+///
+/// Generated implementations for the validated input.
+///
+/// # Errors
+///
+/// Returns a targeted syntax error when field, Serde, or capability controls
+/// are incompatible with the input.
 fn expand_with_container_attributes(
     input: &DeriveInput,
     runtime: &Path,

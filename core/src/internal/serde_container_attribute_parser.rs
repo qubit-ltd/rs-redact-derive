@@ -326,6 +326,16 @@ impl<'input> SerdeContainerAttributeParser<'input> {
 }
 
 /// Parses a container `default` control that affects only deserialization.
+///
+/// # Parameters
+///
+/// * `meta` - Nested `default` metadata item.
+/// * `type_name` - Derived type used in targeted diagnostics.
+///
+/// # Errors
+///
+/// Returns an error when a valued default is not a string or a parenthesized
+/// default is supplied.
 fn parse_deserialize_only_default(meta: &ParseNestedMeta<'_>, type_name: &Ident) -> Result<()> {
     if meta.input.peek(Token![=]) {
         let _: LitStr = meta.value()?.parse()?;
@@ -340,6 +350,16 @@ fn parse_deserialize_only_default(meta: &ParseNestedMeta<'_>, type_name: &Ident)
 }
 
 /// Parses one bare container control that affects only deserialization.
+///
+/// # Parameters
+///
+/// * `meta` - Nested deserialization-only metadata item.
+/// * `type_name` - Derived type used in targeted diagnostics.
+/// * `name` - Control name required to be bare.
+///
+/// # Errors
+///
+/// Returns an error when the control has a value or parenthesized arguments.
 fn require_bare_deserialize_only(
     meta: &ParseNestedMeta<'_>,
     type_name: &Ident,

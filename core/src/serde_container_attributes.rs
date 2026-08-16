@@ -94,6 +94,7 @@ impl SerdeContainerAttributes {
     /// # Returns
     ///
     /// An explicit `rename` or the Rust type identifier.
+    #[must_use]
     #[inline(always)]
     pub(crate) fn name(&self) -> &str {
         &self.name

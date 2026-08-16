@@ -25,6 +25,14 @@ use crate::generic_bounds;
 use crate::immutable_trait_name::ImmutableTraitName;
 
 /// Returns whether `field` has a direct `Option<T>` type.
+///
+/// # Parameters
+///
+/// * `field` - Field whose declared type is inspected.
+///
+/// # Returns
+///
+/// `true` only when the field type is syntactically `Option<T>`.
 pub(crate) fn is_direct_option(field: &Field) -> bool {
     let Type::Path(type_path) = &field.ty else {
         return false;
