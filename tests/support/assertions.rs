@@ -323,7 +323,11 @@ fn policy_with_domain_limits(
 ) -> RedactionPolicy {
     let mut builder = RedactionPolicy::builder();
     builder.limits().domain(
-        DomainRedactionLimits::new(max_nodes, max_collection_items, max_depth)
+        DomainRedactionLimits::builder()
+            .max_nodes(max_nodes)
+            .max_collection_items(max_collection_items)
+            .max_depth(max_depth)
+            .build()
             .expect("the assertion domain limits should be valid"),
     );
     builder

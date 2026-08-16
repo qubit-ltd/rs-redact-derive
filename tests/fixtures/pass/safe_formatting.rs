@@ -88,7 +88,7 @@ fn main() {
 
     let mut builder = RedactionPolicy::builder();
     builder.limits().domain(
-        DomainRedactionLimits::new(2, 1, 1)
+        DomainRedactionLimits::builder().max_nodes(2).max_collection_items(1).max_depth(1).build()
             .expect("the fixture domain limits should be valid"),
     );
     let policy = builder
