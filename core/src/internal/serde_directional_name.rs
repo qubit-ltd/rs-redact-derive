@@ -18,6 +18,22 @@ use syn::token::Paren;
 /// The returned literal is only the `serialize` branch. A deserialize-only
 /// declaration returns `None`, allowing generated serialization to retain its
 /// default name while the caller separately records that the control occurred.
+///
+/// # Parameters
+///
+/// * `meta` - Nested Serde metadata item containing a direct or directional
+///   name.
+/// * `control` - Attribute control name used in targeted diagnostics.
+///
+/// # Returns
+///
+/// The serialize-side name literal, or `None` when only a deserialize-side
+/// name was provided.
+///
+/// # Errors
+///
+/// Returns an error when the value is not a string, the directional form is
+/// empty, a direction is repeated, or an unsupported direction is supplied.
 pub(crate) fn parse_serialize_name(
     meta: &ParseNestedMeta<'_>,
     control: &str,

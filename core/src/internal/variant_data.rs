@@ -61,6 +61,7 @@ impl<'a> VariantData<'a> {
     /// # Returns
     ///
     /// The variant carrying its identifier and source span.
+    #[must_use]
     #[inline(always)]
     pub(crate) const fn variant(&self) -> &'a Variant {
         self.variant
@@ -71,6 +72,7 @@ impl<'a> VariantData<'a> {
     /// # Returns
     ///
     /// The zero-based index used by serializer variant APIs.
+    #[must_use]
     #[inline(always)]
     pub(crate) const fn index(&self) -> u32 {
         self.index
@@ -81,6 +83,7 @@ impl<'a> VariantData<'a> {
     /// # Returns
     ///
     /// Named, unnamed, or unit fields in source order.
+    #[must_use]
     #[inline(always)]
     pub(crate) const fn fields(&self) -> &FieldsData<'a> {
         &self.fields
@@ -91,6 +94,7 @@ impl<'a> VariantData<'a> {
     /// # Returns
     ///
     /// Variant naming, field renaming, and skip state.
+    #[must_use]
     #[inline(always)]
     pub(crate) const fn serde_attributes(&self) -> &SerdeVariantAttributes {
         &self.serde_attributes

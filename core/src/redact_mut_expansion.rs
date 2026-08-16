@@ -36,10 +36,6 @@ use crate::internal::VariantData;
 /// # Returns
 ///
 /// Generated destructive redaction implementation tokens.
-///
-/// # Errors
-///
-/// Returns generated implementation tokens.
 pub(crate) fn expand(
     input: &DeriveInput,
     runtime: &Path,
@@ -175,6 +171,12 @@ fn named_mutations(
             );
             let invocation = if matches!(mode, FieldMode::Json) {
                 quote!(#runtime::__qubit_redact_json!(#helper(&mut self.#identifier, policy);))
+            } else if matches!(mode, FieldMode::Map) && field_assertion::is_direct_option(field) {
+                quote! {
+                    if let ::core::option::Option::Some(__map) = self.#identifier.as_mut() {
+                        #helper(__map, policy);
+                    }
+                }
             } else {
                 quote!(#helper(&mut self.#identifier, policy);)
             };
@@ -216,6 +218,12 @@ fn unnamed_mutations(
             );
             let invocation = if matches!(mode, FieldMode::Json) {
                 quote!(#runtime::__qubit_redact_json!(#helper(&mut self.#index, policy);))
+            } else if matches!(mode, FieldMode::Map) && field_assertion::is_direct_option(field) {
+                quote! {
+                    if let ::core::option::Option::Some(__map) = self.#index.as_mut() {
+                        #helper(__map, policy);
+                    }
+                }
             } else {
                 quote!(#helper(&mut self.#index, policy);)
             };
