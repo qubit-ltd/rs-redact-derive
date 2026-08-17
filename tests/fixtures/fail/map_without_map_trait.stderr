@@ -1,10 +1,11 @@
 error[E0271]: type mismatch resolving `<&Vec<String> as IntoIterator>::Item == (&_, &_)`
-  --> tests/fixtures/fail/map_without_map_trait.rs:15:5
+  --> tests/fixtures/fail/map_without_map_trait.rs:13:10
    |
-15 | /     /// A vector does not expose string key/value map iteration.
-16 | |     #[redact(map)]
-17 | |     values: Vec<String>,
-   | |_______________________^ expected `(&_, &_)`, found `&String`
+13 | #[derive(Redact)]
+   |          ^^^^^^ expected `(&_, &_)`, found `&String`
+14 | struct Record {
+15 |     /// A vector does not expose string key/value map iteration.
+   |     ------------------------------------------------------------ required by a bound introduced by this call
    |
    = note:  expected tuple `(&_, &_)`
            found reference `&String`
@@ -12,25 +13,21 @@ error[E0271]: type mismatch resolving `<&Vec<String> as IntoIterator>::Item == (
 note: required by a bound in `__qubit_redact_Record_values_requires_RedactMapValue`
   --> tests/fixtures/fail/map_without_map_trait.rs:13:10
    |
-13 |   #[derive(Redact)]
-   |            ^^^^^^ required by this bound in `__qubit_redact_Record_values_requires_RedactMapValue`
-14 |   struct Record {
-15 | /     /// A vector does not expose string key/value map iteration.
-16 | |     #[redact(map)]
-17 | |     values: Vec<String>,
-   | |_______________________- required by a bound in this function
+13 | #[derive(Redact)]
+   |          ^^^^^^ required by this bound in `__qubit_redact_Record_values_requires_RedactMapValue`
+14 | struct Record {
+15 |     /// A vector does not expose string key/value map iteration.
+   |     ------------------------------------------------------------ required by a bound in this function
    = note: this error originates in the derive macro `Redact` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0271]: type mismatch resolving `<&mut Vec<String> as IntoIterator>::Item == (&_, &mut _)`
   --> tests/fixtures/fail/map_without_map_trait.rs:13:10
    |
-13 |   #[derive(Redact)]
-   |            ^^^^^^ expected `(&_, &mut _)`, found `&mut String`
-14 |   struct Record {
-15 | /     /// A vector does not expose string key/value map iteration.
-16 | |     #[redact(map)]
-17 | |     values: Vec<String>,
-   | |_______________________- required by a bound introduced by this call
+13 | #[derive(Redact)]
+   |          ^^^^^^ expected `(&_, &mut _)`, found `&mut String`
+14 | struct Record {
+15 |     /// A vector does not expose string key/value map iteration.
+   |     ------------------------------------------------------------ required by a bound introduced by this call
    |
    = note:          expected tuple `(&_, &mut _)`
            found mutable reference `&mut String`
@@ -38,18 +35,14 @@ error[E0271]: type mismatch resolving `<&mut Vec<String> as IntoIterator>::Item 
 note: required for `Vec<String>` to implement `__qubit_redact_Record_values_requires_RedactMapValueMutCapability<_, _>`
   --> tests/fixtures/fail/map_without_map_trait.rs:15:5
    |
-13 |   #[derive(Redact)]
-   |            ------ unsatisfied trait bound introduced here
-14 |   struct Record {
-15 | /     /// A vector does not expose string key/value map iteration.
-16 | |     #[redact(map)]
-17 | |     values: Vec<String>,
-   | |_______________________^
+13 | #[derive(Redact)]
+   |          ------ unsatisfied trait bound introduced here
+14 | struct Record {
+15 |     /// A vector does not expose string key/value map iteration.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `__qubit_redact_Record_values_requires_RedactMapValueMut`
   --> tests/fixtures/fail/map_without_map_trait.rs:15:5
    |
-15 | /     /// A vector does not expose string key/value map iteration.
-16 | |     #[redact(map)]
-17 | |     values: Vec<String>,
-   | |_______________________^ required by this bound in `__qubit_redact_Record_values_requires_RedactMapValueMut`
+15 |     /// A vector does not expose string key/value map iteration.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `__qubit_redact_Record_values_requires_RedactMapValueMut`
    = note: this error originates in the derive macro `Redact` (in Nightly builds, run with -Z macro-backtrace for more info)

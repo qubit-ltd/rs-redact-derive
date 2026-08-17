@@ -1,12 +1,11 @@
 error[E0277]: mutable redaction capability is not implemented for &'a str
   --> tests/fixtures/fail/missing_no_mut.rs:13:10
    |
-13 |   #[derive(Redact)]
-   |            ^^^^^^ this field cannot be redacted in place
-14 |   struct BorrowedUser<'a> {
-15 | /     #[redact(level = "secret")]
-16 | |     password: &'a str,
-   | |_____________________- required by a bound introduced by this call
+13 | #[derive(Redact)]
+   |          ^^^^^^ this field cannot be redacted in place
+14 | struct BorrowedUser<'a> {
+15 |     #[redact(level = "secret")]
+   |     - required by a bound introduced by this call
    |
    = help: the trait `RedactValueMut` is not implemented for `&'a str`
    = note: if this type only needs immutable redaction, add #[redact(no_mut)] to the derived type
@@ -18,16 +17,14 @@ help: the trait `RedactValueMut` is implemented for `String`
 note: required for `&'a str` to implement `__qubit_redact_BorrowedUser_password_requires_RedactValueMutCapability`
   --> tests/fixtures/fail/missing_no_mut.rs:15:5
    |
-13 |   #[derive(Redact)]
-   |            ------ unsatisfied trait bound introduced here
-14 |   struct BorrowedUser<'a> {
-15 | /     #[redact(level = "secret")]
-16 | |     password: &'a str,
-   | |_____________________^
+13 | #[derive(Redact)]
+   |          ------ unsatisfied trait bound introduced here
+14 | struct BorrowedUser<'a> {
+15 |     #[redact(level = "secret")]
+   |     ^
 note: required by a bound in `__qubit_redact_BorrowedUser_password_requires_RedactValueMut`
   --> tests/fixtures/fail/missing_no_mut.rs:15:5
    |
-15 | /     #[redact(level = "secret")]
-16 | |     password: &'a str,
-   | |_____________________^ required by this bound in `__qubit_redact_BorrowedUser_password_requires_RedactValueMut`
+15 |     #[redact(level = "secret")]
+   |     ^ required by this bound in `__qubit_redact_BorrowedUser_password_requires_RedactValueMut`
    = note: this error originates in the derive macro `Redact` (in Nightly builds, run with -Z macro-backtrace for more info)

@@ -5,3 +5,9 @@ error: #[redact(json)] requires the `json` feature of qubit-redact
    |          ^^^^^^
    |
    = note: this error originates in the macro `::qubit_redact::__qubit_redact_json` which comes from the expansion of the derive macro `Redact` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `__qubit_redact_Record_payload_requires_Json` in this scope
+  --> tests/fixtures/fail/json_without_feature.rs:15:5
+   |
+15 |     /// Stored JSON text.
+   |     ^^^^^^^^^^^^^^^^^^^^^ not found in this scope

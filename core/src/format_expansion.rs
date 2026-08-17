@@ -26,7 +26,7 @@ use crate::container_attributes::ContainerAttributes;
 /// # Returns
 ///
 /// Empty tokens when neither implementation was requested, otherwise the
-/// requested implementations delegating to the existing redacted view.
+/// requested implementations delegating to the structured redaction writer.
 pub(crate) fn expand(
     input: &DeriveInput,
     runtime: &Path,
@@ -43,8 +43,8 @@ pub(crate) fn expand(
                     &self,
                     formatter: &mut ::core::fmt::Formatter<'_>,
                 ) -> ::core::fmt::Result {
-                    let redacted = <Self as #runtime::domain::Redact>::redacted(self);
-                    ::core::fmt::Debug::fmt(&redacted, formatter)
+                    let output = #runtime::Redactor::default().redact(self);
+                    formatter.write_str(output.text().as_str())
                 }
             }
         }
@@ -57,8 +57,8 @@ pub(crate) fn expand(
                     &self,
                     formatter: &mut ::core::fmt::Formatter<'_>,
                 ) -> ::core::fmt::Result {
-                    let redacted = <Self as #runtime::domain::Redact>::redacted(self);
-                    ::core::fmt::Display::fmt(&redacted, formatter)
+                    let output = #runtime::Redactor::default().redact(self);
+                    formatter.write_str(output.text().as_str())
                 }
             }
         }
