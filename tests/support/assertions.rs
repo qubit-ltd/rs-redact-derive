@@ -178,7 +178,7 @@ struct JsonRecord {
 pub fn assert_named_redaction() {
     let mut builder = RedactionPolicy::builder();
     builder
-        .fields()
+        .legacy_fields()
         .raise("token", Sensitivity::Secret)
         .expect("the named-record token rule should be valid");
     let policy = builder
@@ -339,7 +339,7 @@ fn policy_with_domain_limits(
 pub fn assert_sensitivity_expansion() {
     let mut builder = RedactionPolicy::builder();
     builder
-        .fields()
+        .legacy_fields()
         .raise("field", Sensitivity::Secret)
         .expect("the sensitivity assertion field must be valid");
     let policy = builder
@@ -390,7 +390,7 @@ pub fn assert_serde_adapter_expansion() {
 pub fn assert_json_expansion() {
     let mut builder = RedactionPolicy::builder();
     builder
-        .fields()
+        .legacy_fields()
         .raise("password", Sensitivity::Secret)
         .expect("the JSON policy field should be valid");
     let policy = builder.build().expect("the JSON policy should build");
