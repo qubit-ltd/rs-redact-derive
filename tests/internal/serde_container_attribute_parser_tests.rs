@@ -10,7 +10,5 @@
 /// Verifies unsupported and incompatible container controls are rejected.
 #[test]
 fn test_serde_container_attribute_parser_rejects_invalid_controls() {
-    crate::support::assertions::assert_compile_fail(
-        "tests/fixtures/fail/invalid_serde_container_attributes.rs",
-    );
+    crate::support::assertions::assert_compile_fail("tests/fixtures/fail/invalid_serde_container_attributes.rs");
 }

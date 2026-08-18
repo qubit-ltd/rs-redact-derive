@@ -15,15 +15,13 @@ use syn::parse_str;
 
 /// Parses a derive input fixture for the expansion entry-point tests.
 fn parse_input() -> DeriveInput {
-    parse_str("struct Record { value: String }")
-        .expect("the expansion fixture should parse")
+    parse_str("struct Record { value: String }").expect("the expansion fixture should parse")
 }
 
 /// Verifies the standard expansion entry point produces implementation tokens.
 #[test]
 fn test_expand_generates_redact_implementation() {
-    let tokens =
-        expand(&parse_input()).expect("standard expansion should succeed");
+    let tokens = expand(&parse_input()).expect("standard expansion should succeed");
 
     assert!(tokens.to_string().contains("Redact"));
 }

@@ -51,13 +51,8 @@ fn test_serde_naming_applies_exact_precedence() {
         }),
     );
     assert_eq!(
-        serde_json::to_value(
-            NamedEvent::Explicit {
-                another_value: "shown",
-            }
-            .redacted(),
-        )
-        .expect("explicitly renamed variant serializes"),
+        serde_json::to_value(NamedEvent::Explicit { another_value: "shown" }.redacted(),)
+            .expect("explicitly renamed variant serializes"),
         serde_json::json!({"custom": {"anotherValue": "shown"}}),
     );
 }

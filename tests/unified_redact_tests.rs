@@ -67,8 +67,7 @@ fn test_redact_derive_combined_format_and_serde_integrations() {
 
     let debug = format!("{user:?}");
     let display = format!("{user}");
-    let json = serde_json::to_string(&user)
-        .expect("direct redacted serialization should succeed");
+    let json = serde_json::to_string(&user).expect("direct redacted serialization should succeed");
 
     assert!(!debug.contains("raw-password"));
     assert!(!display.contains("raw-password"));

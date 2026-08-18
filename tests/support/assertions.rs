@@ -181,17 +181,12 @@ pub fn assert_named_redaction() {
         .edit_fields()
         .raise("token", Sensitivity::Secret)
         .expect("the named-record token rule should be valid");
-    let policy = builder
-        .build()
-        .expect("the named-record policy should be valid");
+    let policy = builder.build().expect("the named-record policy should be valid");
     let value = NamedRecord {
         visible: "shown",
         secret: String::from("raw-secret"),
         skipped: String::from("raw-skipped"),
-        metadata: BTreeMap::from([(
-            String::from("token"),
-            String::from("raw-map"),
-        )]),
+        metadata: BTreeMap::from([(String::from("token"), String::from("raw-map"))]),
     };
     let _ = &value.skipped;
 
@@ -203,15 +198,11 @@ pub fn assert_named_redaction() {
 
 /// Verifies tuple structs preserve their real shape after redaction.
 pub fn assert_tuple_redaction() {
-    let value =
-        TupleRecord(String::from("raw-secret"), String::from("raw-skipped"));
+    let value = TupleRecord(String::from("raw-secret"), String::from("raw-skipped"));
     let TupleRecord(_, skipped) = &value;
     let _ = skipped;
 
-    assert_eq!(
-        format!("{:?}", value.redacted()),
-        r#"TupleRecord("<redacted>")"#,
-    );
+    assert_eq!(format!("{:?}", value.redacted()), r#"TupleRecord("<redacted>")"#,);
 }
 
 /// Verifies named, tuple, and unit variants preserve their real shapes.
@@ -221,10 +212,7 @@ pub fn assert_enum_redaction() {
     };
     let tuple = Event::Tuple(String::from("raw-tuple"));
 
-    assert_eq!(
-        format!("{:?}", named.redacted()),
-        r#"Named { secret: "<redacted>" }"#,
-    );
+    assert_eq!(format!("{:?}", named.redacted()), r#"Named { secret: "<redacted>" }"#,);
     assert_eq!(format!("{:?}", tuple.redacted()), r#"Tuple("<redacted>")"#,);
     assert_eq!(format!("{:?}", Event::Ready.redacted()), "Ready");
 
@@ -242,10 +230,7 @@ pub fn assert_enum_redaction() {
         format!("{:?}", guarded_tuple.redacted_with(&policy)),
         r#"Tuple("shown", <truncated>)"#,
     );
-    assert_eq!(
-        format!("{:?}", GuardedEvent::Ready.redacted_with(&policy)),
-        "Ready",
-    );
+    assert_eq!(format!("{:?}", GuardedEvent::Ready.redacted_with(&policy)), "Ready",);
 }
 
 /// Verifies rejected and skipped fields are handled before value access.
@@ -275,9 +260,7 @@ pub fn assert_field_admission_precedes_access() {
 pub fn assert_nested_admission_uses_shared_session() {
     let policy = policy_with_domain_limits(2, 1, 1);
     let value = DepthRoot {
-        child: DepthLeaf {
-            blocked: PanicDebug,
-        },
+        child: DepthLeaf { blocked: PanicDebug },
     };
 
     assert_eq!(
@@ -305,22 +288,12 @@ pub fn assert_format_expansion() {
         secret: String::from("raw-secret"),
     };
 
-    assert_eq!(
-        format!("{value:?}"),
-        r#"FormattedRecord { secret: "<redacted>" }"#,
-    );
-    assert_eq!(
-        format!("{value}"),
-        r#"FormattedRecord { secret: "<redacted>" }"#,
-    );
+    assert_eq!(format!("{value:?}"), r#"FormattedRecord { secret: "<redacted>" }"#,);
+    assert_eq!(format!("{value}"), r#"FormattedRecord { secret: "<redacted>" }"#,);
 }
 
 /// Builds a policy with exact domain traversal limits for one assertion.
-fn policy_with_domain_limits(
-    max_nodes: usize,
-    max_collection_items: usize,
-    max_depth: usize,
-) -> RedactionPolicy {
+fn policy_with_domain_limits(max_nodes: usize, max_collection_items: usize, max_depth: usize) -> RedactionPolicy {
     let mut builder = RedactionPolicy::builder();
     builder.limits().domain(
         DomainRedactionLimits::builder()
@@ -330,9 +303,7 @@ fn policy_with_domain_limits(
             .build()
             .expect("the assertion domain limits should be valid"),
     );
-    builder
-        .build()
-        .expect("the assertion redaction policy should be valid")
+    builder.build().expect("the assertion redaction policy should be valid")
 }
 
 /// Verifies every accepted sensitivity literal reaches the runtime model.
@@ -342,9 +313,7 @@ pub fn assert_sensitivity_expansion() {
         .edit_fields()
         .raise("field", Sensitivity::Secret)
         .expect("the sensitivity assertion field must be valid");
-    let policy = builder
-        .build()
-        .expect("the sensitivity assertion policy is valid");
+    let policy = builder.build().expect("the sensitivity assertion policy is valid");
 
     assert_eq!(policy.sensitivity_for("field"), Some(Sensitivity::Secret));
     assert_named_redaction();
@@ -353,16 +322,11 @@ pub fn assert_sensitivity_expansion() {
 /// Verifies Serde container, variant, field, and representation expansion.
 pub fn assert_serde_expansion() {
     let value = SerializableEvent::Tuple(String::from("raw-secret"));
-    let json = serde_json::to_value(value.redacted())
-        .expect("redacted adjacent serialization succeeds");
+    let json = serde_json::to_value(value.redacted()).expect("redacted adjacent serialization succeeds");
 
+    assert_eq!(json, serde_json::json!({"kind": "Tuple", "payload": "<redacted>"}),);
     assert_eq!(
-        json,
-        serde_json::json!({"kind": "Tuple", "payload": "<redacted>"}),
-    );
-    assert_eq!(
-        serde_json::to_value(SerializableEvent::Ready.redacted())
-            .expect("redacted unit serialization succeeds"),
+        serde_json::to_value(SerializableEvent::Ready.redacted()).expect("redacted unit serialization succeeds"),
         serde_json::json!({"kind": "Ready"}),
     );
 }
@@ -373,8 +337,7 @@ pub fn assert_serde_adapter_expansion() {
         with_value: String::from("with"),
         function_value: String::from("function"),
     };
-    let json = serde_json::to_value(value.redacted())
-        .expect("plain field serde adapters should serialize");
+    let json = serde_json::to_value(value.redacted()).expect("plain field serde adapters should serialize");
 
     assert_eq!(
         json,
@@ -403,8 +366,7 @@ pub fn assert_json_expansion() {
     assert!(!formatted.contains("raw-password"));
     assert!(formatted.contains("Ada"));
 
-    let serialized = serde_json::to_value(value.redacted_with(&policy))
-        .expect("JSON redacted view should serialize");
+    let serialized = serde_json::to_value(value.redacted_with(&policy)).expect("JSON redacted view should serialize");
     let serialized_text = serialized["document"]
         .as_str()
         .expect("JSON text should retain its outer string shape");
@@ -418,8 +380,8 @@ pub fn assert_json_expansion() {
     value.redact_in_place_with(&policy);
     assert!(!value.document.contains("raw-password"));
     assert_eq!(
-        serde_json::from_str::<serde_json::Value>(&value.document)
-            .expect("mutated JSON text should remain valid JSON")["name"],
+        serde_json::from_str::<serde_json::Value>(&value.document).expect("mutated JSON text should remain valid JSON")
+            ["name"],
         "Ada",
     );
 }

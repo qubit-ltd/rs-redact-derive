@@ -26,11 +26,7 @@ enum CarrierEvent {
         secret: String,
     },
     /// Tuple carriers.
-    Tuple(
-        &'static str,
-        #[redact(skip)] String,
-        #[redact(level = "secret")] String,
-    ),
+    Tuple(&'static str, #[redact(skip)] String, #[redact(level = "secret")] String),
 }
 
 /// Verifies skipped fields do not disturb retained names or tuple order.
@@ -55,12 +51,7 @@ fn test_serde_variant_fields_preserve_retained_carrier_order() {
     );
     assert_eq!(
         serde_json::to_value(
-            CarrierEvent::Tuple(
-                "shown",
-                String::from("raw-omitted"),
-                String::from("raw-secret"),
-            )
-            .redacted(),
+            CarrierEvent::Tuple("shown", String::from("raw-omitted"), String::from("raw-secret"),).redacted(),
         )
         .expect("tuple carrier variant serializes"),
         serde_json::json!({"Tuple": ["shown", "<redacted>"]}),

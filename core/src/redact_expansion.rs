@@ -120,20 +120,12 @@ fn expand_with_container_attributes(
     let mut redaction_generics = input.generics.clone();
     generic_bounds::add_immutable_bounds(&mut redaction_generics, &model, runtime);
     let immutable_assertions = match &model {
-        ContainerData::Struct(fields) => {
-            immutable_assertions(&input.ident, fields, runtime)
-        }
-        ContainerData::Enum(variants) => {
-            enum_immutable_assertions(&input.ident, variants, runtime)
-        }
+        ContainerData::Struct(fields) => immutable_assertions(&input.ident, fields, runtime),
+        ContainerData::Enum(variants) => enum_immutable_assertions(&input.ident, variants, runtime),
     };
     let write_body = match &model {
-        ContainerData::Struct(fields) => {
-            writer_struct_body(&input.ident, fields)
-        }
-        ContainerData::Enum(variants) => {
-            writer_enum_body(&input.ident, variants)
-        }
+        ContainerData::Struct(fields) => writer_struct_body(&input.ident, fields),
+        ContainerData::Enum(variants) => writer_enum_body(&input.ident, variants),
     };
     let format_impl =
         format_expansion::expand(input, runtime, &container_attributes, &redaction_generics);
@@ -162,10 +154,7 @@ fn expand_with_container_attributes(
 }
 
 /// Generates a structured writer body for one struct.
-fn writer_struct_body(
-    type_name: &Ident,
-    fields: &FieldsData<'_>,
-) -> TokenStream {
+fn writer_struct_body(type_name: &Ident, fields: &FieldsData<'_>) -> TokenStream {
     match fields {
         FieldsData::Named(fields) => {
             let calls = fields.iter().filter_map(|field| {
@@ -210,10 +199,7 @@ fn writer_struct_body(
 }
 
 /// Generates a structured writer match for one enum.
-fn writer_enum_body(
-    type_name: &Ident,
-    variants: &[VariantData<'_>],
-) -> TokenStream {
+fn writer_enum_body(type_name: &Ident, variants: &[VariantData<'_>]) -> TokenStream {
     let arms = variants.iter().map(|variant| {
         let variant_name = &variant.variant().ident;
         match variant.fields() {
@@ -229,11 +215,7 @@ fn writer_enum_body(
                 let calls = fields.iter().filter_map(|field| {
                     let identifier = field.identifier();
                     let field_name = identifier.to_string();
-                    let context = variant_field_context(
-                        variant.index(),
-                        variant_name,
-                        &field_name,
-                    );
+                    let context = variant_field_context(variant.index(), variant_name, &field_name);
                     writer_field_call(
                         type_name,
                         field.field(),
@@ -252,13 +234,16 @@ fn writer_enum_body(
                 }
             }
             FieldsData::Unnamed(fields) => {
-                let bindings = fields.iter().map(|field| {
-                    format_ident!(
-                        "__qubit_redact_field_{}",
-                        field.index().index,
-                        span = field.field().span(),
-                    )
-                }).collect::<Vec<_>>();
+                let bindings = fields
+                    .iter()
+                    .map(|field| {
+                        format_ident!(
+                            "__qubit_redact_field_{}",
+                            field.index().index,
+                            span = field.field().span(),
+                        )
+                    })
+                    .collect::<Vec<_>>();
                 let patterns = fields.iter().zip(&bindings).map(|(field, binding)| {
                     if matches!(field.attributes().mode(), FieldMode::Skip) {
                         quote!(_)
@@ -268,11 +253,7 @@ fn writer_enum_body(
                 });
                 let calls = fields.iter().zip(&bindings).filter_map(|(field, binding)| {
                     let field_name = field.index().index.to_string();
-                    let context = variant_field_context(
-                        variant.index(),
-                        variant_name,
-                        &field_name,
-                    );
+                    let context = variant_field_context(variant.index(), variant_name, &field_name);
                     writer_field_call(
                         type_name,
                         field.field(),
@@ -325,25 +306,24 @@ fn writer_field_call(
                 capability_name,
                 immutable_trait_name(mode),
             );
-            let argument = if matches!(mode, FieldMode::Map)
-                && field_assertion::is_direct_option(field)
-            {
-                quote! {
-                    __fields.optional_value(
-                        #field_name,
-                        #value,
-                        |__value, __session| {
-                            ::std::format!("{:?}", #helper(__value, __session))
-                        },
-                    );
-                }
-            } else {
-                quote! {
-                    __fields.value(#field_name, |__session| {
-                        #helper(#value, __session)
-                    });
-                }
-            };
+            let argument =
+                if matches!(mode, FieldMode::Map) && field_assertion::is_direct_option(field) {
+                    quote! {
+                        __fields.optional_value(
+                            #field_name,
+                            #value,
+                            |__value, __session| {
+                                ::std::format!("{:?}", #helper(__value, __session))
+                            },
+                        );
+                    }
+                } else {
+                    quote! {
+                        __fields.value(#field_name, |__session| {
+                            #helper(#value, __session)
+                        });
+                    }
+                };
             argument
         }
         FieldMode::Skip => unreachable!(),

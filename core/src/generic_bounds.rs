@@ -112,11 +112,7 @@ pub(crate) fn add_serialization_bounds(
             add_trait_bound(generics, field, quote!(#runtime::domain::RedactValue));
         }
         FieldMode::Nested => {
-            add_trait_bound(
-                generics,
-                field,
-                quote!(#runtime::internal::RedactSerialize),
-            );
+            add_trait_bound(generics, field, quote!(#runtime::internal::RedactSerialize));
         }
         FieldMode::Plain | FieldMode::Skip | FieldMode::Map | FieldMode::Json => {}
     });

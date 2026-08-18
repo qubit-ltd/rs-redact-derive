@@ -51,9 +51,7 @@ fn check_fixture(fixture: &str) -> Output {
         .join("tests/fixtures/crates")
         .join(fixture)
         .join("Cargo.toml");
-    let target_dir = manifest_dir
-        .join("../target")
-        .join(format!("{fixture}-fixture"));
+    let target_dir = manifest_dir.join("../target").join(format!("{fixture}-fixture"));
     let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
 
     crate::support::isolated_cargo::command(&cargo)
@@ -71,13 +69,8 @@ fn check_fixture(fixture: &str) -> Output {
 fn test_crate_path_resolve_handles_self_and_renamed_dependency() {
     let input = derive_input();
     let itself: Path = parse_quote!(::qubit_redact);
-    let self_path = crate_path::resolve(
-        &input,
-        Ok(FoundCrate::Itself),
-        itself.clone(),
-        "runtime lookup",
-    )
-    .expect("self lookup should use the supplied path");
+    let self_path = crate_path::resolve(&input, Ok(FoundCrate::Itself), itself.clone(), "runtime lookup")
+        .expect("self lookup should use the supplied path");
     let renamed_path = crate_path::resolve(
         &input,
         Ok(FoundCrate::Name("redact-runtime".to_owned())),
@@ -87,10 +80,7 @@ fn test_crate_path_resolve_handles_self_and_renamed_dependency() {
     .expect("renamed lookup should construct an absolute path");
 
     assert_eq!(self_path.into_token_stream().to_string(), ":: qubit_redact");
-    assert_eq!(
-        renamed_path.into_token_stream().to_string(),
-        ":: redact_runtime",
-    );
+    assert_eq!(renamed_path.into_token_stream().to_string(), ":: redact_runtime",);
 }
 
 /// Verifies lookup failures retain the caller-supplied error context.
@@ -102,8 +92,7 @@ fn test_crate_path_resolve_wraps_lookup_error_with_context() {
         crate_name: "qubit-redact".to_owned(),
         path: PathBuf::from("/fixture/Cargo.toml"),
     };
-    let result =
-        crate_path::resolve(&input, Err(error), itself, "runtime lookup");
+    let result = crate_path::resolve(&input, Err(error), itself, "runtime lookup");
 
     let error = match result {
         Ok(_) => panic!("failed lookup should produce a syntax error"),
@@ -128,10 +117,7 @@ fn test_runtime_crate_path_resolves_itself() {
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     assert!(!output.status.success(), "{stderr}");
-    assert!(
-        stderr.contains("has unknown container attribute"),
-        "{stderr}",
-    );
+    assert!(stderr.contains("has unknown container attribute"), "{stderr}",);
     assert!(
         !stderr.contains("unable to resolve the qubit-redact runtime crate"),
         "{stderr}",

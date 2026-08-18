@@ -34,8 +34,7 @@ fn parse_rename(attribute: Attribute) -> Result<Option<String>> {
     attribute.parse_nested_meta(|meta| {
         if meta.path.is_ident("rename") {
             serialized_name =
-                serde_directional_name::parse_serialize_name(&meta, "rename")?
-                    .map(|literal| literal.value());
+                serde_directional_name::parse_serialize_name(&meta, "rename")?.map(|literal| literal.value());
         }
         Ok(())
     })?;
@@ -45,8 +44,7 @@ fn parse_rename(attribute: Attribute) -> Result<Option<String>> {
 /// Verifies direct and directional names select the serialization branch.
 #[test]
 fn test_parse_serialize_name_selects_serialization_branch() {
-    let direct = parse_rename(parse_quote!(#[serde(rename = "output")]))
-        .expect("direct rename should parse");
+    let direct = parse_rename(parse_quote!(#[serde(rename = "output")])).expect("direct rename should parse");
     let directional = parse_rename(parse_quote!(
         #[serde(rename(serialize = "output", deserialize = "input"))]
     ))
@@ -86,8 +84,7 @@ fn test_parse_serialize_name_rejects_invalid_directional_controls() {
 
     let mut serialized_name = None;
     let parser = parser(|meta| {
-        serialized_name =
-            serde_directional_name::parse_serialize_name(&meta, "rename")?;
+        serialized_name = serde_directional_name::parse_serialize_name(&meta, "rename")?;
         Ok(())
     });
     let error = parser
