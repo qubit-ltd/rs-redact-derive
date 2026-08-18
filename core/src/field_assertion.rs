@@ -83,7 +83,7 @@ pub(crate) fn immutable(
                 #[inline(always)]
                 fn #helper<'a, 's, 'p, __QubitRedactField>(
                     value: &'a __QubitRedactField,
-                    session: &'s mut #runtime::RedactionSession<'p>,
+                    writer: &'s mut #runtime::domain::RedactionWriter<'_, 'p>,
                 ) -> #runtime::domain::RedactedValue<'a>
                 where
                     __QubitRedactField: #runtime::domain::RedactValue + ?Sized,
@@ -91,7 +91,7 @@ pub(crate) fn immutable(
                     #runtime::domain::RedactValue::redact_value(
                         value,
                         #level,
-                        session.policy().masking(),
+                        writer.policy().masking(),
                     )
                 }
             }
@@ -101,12 +101,12 @@ pub(crate) fn immutable(
             #[inline(always)]
             fn #helper<'a, 's, 'p, __QubitRedactField>(
                 value: &'a __QubitRedactField,
-                session: &'s mut #runtime::RedactionSession<'p>,
+                writer: &'s mut #runtime::domain::RedactionWriter<'_, 'p>,
             ) -> #runtime::domain::RedactedResult<'a, __QubitRedactField>
             where
                 __QubitRedactField: #runtime::domain::Redact,
             {
-                #runtime::domain::RedactedResult::new(value, session)
+                writer.redacted(value)
             }
         },
         FieldMode::Map => quote_spanned! {field.span()=>
@@ -121,7 +121,7 @@ pub(crate) fn immutable(
                 __QubitRedactValue: ?Sized,
             >(
                 value: &'a __QubitRedactField,
-                session: &'s mut #runtime::RedactionSession<'p>,
+                writer: &'s mut #runtime::domain::RedactionWriter<'_, 'p>,
             ) -> #runtime::domain::RedactedMapResult<
                 'a,
                 __QubitRedactField,
@@ -135,7 +135,7 @@ pub(crate) fn immutable(
                         __QubitRedactValue,
                     > + ?Sized,
             {
-                #runtime::domain::RedactedMapResult::new(value, session)
+                writer.redacted_map(value)
             }
         },
         FieldMode::Json => quote_spanned! {field.span()=>
@@ -145,11 +145,9 @@ pub(crate) fn immutable(
                 #[inline(always)]
                 fn #helper<'a, 's, 'p>(
                     value: &'a ::std::string::String,
-                    session: &'s mut #runtime::RedactionSession<'p>,
+                    writer: &'s mut #runtime::domain::RedactionWriter<'_, 'p>,
                 ) -> #runtime::RedactedText {
-                    session
-                        .json_with_mut(|json| json.redact_text(value))
-                        .into_log_safe_text()
+                    writer.redact_json_text(value)
                 }
             }
         },

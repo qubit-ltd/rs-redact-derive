@@ -301,7 +301,8 @@ fn policy_with_domain_limits(max_nodes: usize, max_collection_items: usize, max_
             .max_collection_items(max_collection_items)
             .max_depth(max_depth)
             .build()
-            .expect("the assertion domain limits should be valid"),
+            .expect("the assertion domain limits should be valid")
+            .into(),
     );
     builder.build().expect("the assertion redaction policy should be valid")
 }
