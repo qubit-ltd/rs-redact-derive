@@ -12,7 +12,7 @@ use std::collections::HashMap;
 
 use qubit_redact::domain::Redact as RedactTrait;
 use qubit_redact::domain::RedactMut;
-use qubit_redact::policy::DomainRedactionLimits;
+use qubit_budget::StructureLimits;
 use qubit_redact::RedactionPolicy;
 use qubit_redact_derive::Redact;
 
@@ -85,8 +85,7 @@ fn main() {
     };
     let mut builder = RedactionPolicy::builder();
     builder.limits().domain(
-        DomainRedactionLimits::builder().max_nodes(2).max_collection_items(1).max_depth(1).build()
-            .expect("the fixture domain limits should be valid"),
+        StructureLimits::builder().max_nodes(2).max_sequence_items(1).max_depth(1).build(),
     );
     let policy = builder
         .build()

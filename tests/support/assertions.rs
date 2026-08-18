@@ -12,11 +12,11 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
+use qubit_budget::StructureLimits;
 use qubit_redact::RedactionPolicy;
 use qubit_redact::Sensitivity;
 use qubit_redact::domain::Redact as _;
 use qubit_redact::domain::RedactMut as _;
-use qubit_redact::policy::DomainRedactionLimits;
 use qubit_redact_derive::Redact;
 /// Named record covering plain, sensitive, skipped, and map fields.
 #[derive(Redact)]
@@ -296,13 +296,11 @@ pub fn assert_format_expansion() {
 fn policy_with_domain_limits(max_nodes: usize, max_collection_items: usize, max_depth: usize) -> RedactionPolicy {
     let mut builder = RedactionPolicy::builder();
     builder.limits().domain(
-        DomainRedactionLimits::builder()
+        StructureLimits::builder()
             .max_nodes(max_nodes)
-            .max_collection_items(max_collection_items)
+            .max_sequence_items(max_collection_items)
             .max_depth(max_depth)
-            .build()
-            .expect("the assertion domain limits should be valid")
-            .into(),
+            .build(),
     );
     builder.build().expect("the assertion redaction policy should be valid")
 }

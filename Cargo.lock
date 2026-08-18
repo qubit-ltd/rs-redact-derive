@@ -96,6 +96,7 @@ version = "0.5.0"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
+ "qubit-budget",
  "qubit-redact",
  "qubit-redact-derive-core",
  "quote",
