@@ -146,7 +146,7 @@ pub(crate) fn immutable(
                 fn #helper<'a, 's, 'p>(
                     value: &'a ::std::string::String,
                     session: &'s mut #runtime::RedactionSession<'p>,
-                ) -> #runtime::LogSafeText<'static> {
+                ) -> #runtime::RedactedText {
                     session
                         .json_with_mut(|json| json.redact_text(value))
                         .into_log_safe_text()
