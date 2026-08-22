@@ -38,6 +38,10 @@ proc-macro = true
 name = "compile_tests"
 path = "tests/compile_tests.rs"
 
+[[test]]
+name = "serde_runtime_tests"
+path = "tests/serde_runtime_tests.rs"
+
 [dependencies]
 proc-macro-crate = "3"
 proc-macro2 = "1"

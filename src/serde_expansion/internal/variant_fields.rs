@@ -81,7 +81,7 @@ pub(super) fn enum_named_parts(
             parsed.serde_attributes().serialize_with(),
             raw.clone(),
         );
-        let condition = serialization_condition(parsed.serde_attributes(), raw);
+        let condition = serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
         setups.push(quote_spanned! {field.span()=>
             let #carrier = if #condition {
                 ::core::option::Option::Some(#value)
@@ -155,7 +155,7 @@ pub(super) fn enum_unnamed_parts(
             parsed.serde_attributes().serialize_with(),
             raw.clone(),
         );
-        let condition = serialization_condition(parsed.serde_attributes(), raw);
+        let condition = serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
         setups.push(quote_spanned! {field.span()=>
             let #carrier = if #condition {
                 ::core::option::Option::Some(#value)

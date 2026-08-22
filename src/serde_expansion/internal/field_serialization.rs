@@ -29,7 +29,8 @@ use crate::field_mode::FieldMode;
 #[must_use]
 #[inline(always)]
 pub(super) fn field_is_skipped(mode: &FieldMode, serde_attributes: &crate::serde_attributes::SerdeAttributes) -> bool {
-    matches!(mode, FieldMode::Skip) || serde_attributes.skip()
+    let _ = mode;
+    serde_attributes.skip()
 }
 
 /// Generates the condition deciding whether one field is serialized.
@@ -46,11 +47,17 @@ pub(super) fn field_is_skipped(mode: &FieldMode, serde_attributes: &crate::serde
 #[inline]
 pub(super) fn serialization_condition(
     serde_attributes: &crate::serde_attributes::SerdeAttributes,
+    mode: &FieldMode,
     raw: TokenStream,
 ) -> TokenStream {
-    serde_attributes
+    let predicate = serde_attributes
         .skip_serializing_if()
-        .map_or_else(|| quote!(true), |predicate| quote!(!(#predicate)(#raw)))
+        .map_or_else(|| quote!(true), |predicate| quote!(!(#predicate)(#raw)));
+    if matches!(mode, FieldMode::Skip) {
+        quote!(policy.is_disabled() && #predicate)
+    } else {
+        predicate
+    }
 }
 
 /// Generates one serializable raw or redacted carrier expression.
@@ -85,11 +92,19 @@ pub(super) fn serialized_carrier(
         FieldMode::Level(sensitivity) => {
             let level = sensitivity.runtime_tokens(runtime);
             quote_spanned! {field.span()=>
-                policy.masking().mask_opaque(#level).to_owned()
+                #runtime::domain::internal::RedactedLevelSerializeRef::new(#raw, policy, #level)
             }
         }
-        FieldMode::Nested | FieldMode::Map | FieldMode::Json => raw,
-        FieldMode::Skip => TokenStream::new(),
+        FieldMode::Nested => quote_spanned!(field.span()=>
+            #runtime::domain::internal::RedactedSerializeRef::new(#raw, policy)
+        ),
+        FieldMode::Map => quote_spanned!(field.span()=>
+            #runtime::domain::internal::RedactedMapSerializeRef::new(#raw, policy)
+        ),
+        FieldMode::Json => quote_spanned!(field.span()=>
+            #runtime::domain::internal::RedactedJsonSerializeRef::new(#raw, policy)
+        ),
+        FieldMode::Skip => raw,
     }
 }
 

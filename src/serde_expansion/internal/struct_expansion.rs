@@ -110,7 +110,7 @@ fn named_struct_body(
             parsed.serde_attributes().serialize_with(),
             raw.clone(),
         );
-        let condition = serialization_condition(parsed.serde_attributes(), raw);
+        let condition = serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
         setups.push(quote_spanned! {field.span()=>
             let #carrier = if #condition {
                 ::core::option::Option::Some(#value)
@@ -197,7 +197,7 @@ fn newtype_struct_body(
         parsed.serde_attributes().serialize_with(),
         raw.clone(),
     );
-    let condition = serialization_condition(parsed.serde_attributes(), raw);
+    let condition = serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
     quote! {
         if #condition {
             let __qubit_redact_serialized_0 = #value;
@@ -253,7 +253,7 @@ fn tuple_struct_body(
             parsed.serde_attributes().serialize_with(),
             raw.clone(),
         );
-        let condition = serialization_condition(parsed.serde_attributes(), raw);
+        let condition = serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
         setups.push(quote_spanned! {field.span()=>
             let #carrier = if #condition {
                 ::core::option::Option::Some(#value)

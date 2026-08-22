@@ -82,12 +82,17 @@ pub(crate) fn add_serialization_bounds(
             add_trait_bound(generics, field, quote!(#serde::Serialize));
         }
         FieldMode::Level(_) => {
-            add_trait_bound(generics, field, quote!(#runtime::RedactLevelValue));
+            add_trait_bound(
+                generics,
+                field,
+                quote!(#runtime::domain::internal::RedactLevelSerialize),
+            );
         }
-        FieldMode::Nested | FieldMode::Map | FieldMode::Json => {
-            add_trait_bound(generics, field, quote!(#serde::Serialize));
-        }
-        FieldMode::Plain | FieldMode::Skip => {}
+        FieldMode::Nested => add_trait_bound(generics, field, quote!(#runtime::domain::internal::RedactSerialize)),
+        FieldMode::Map => add_trait_bound(generics, field, quote!(#runtime::domain::internal::RedactMapSerialize)),
+        FieldMode::Json => add_trait_bound(generics, field, quote!(#runtime::domain::internal::RedactJsonSerialize)),
+        FieldMode::Skip => add_trait_bound(generics, field, quote!(#serde::Serialize)),
+        FieldMode::Plain => {}
     });
 }
 

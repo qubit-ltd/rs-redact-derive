@@ -22,7 +22,8 @@ pub(crate) fn expand(
     };
 
     let serializer = generic_bounds::fresh_identifier(&input.generics, "__QubitRedactSerializer");
-    let serialization_generics = input.generics.clone();
+    let mut serialization_generics = input.generics.clone();
+    generic_bounds::add_serialization_bounds(&mut serialization_generics, model, runtime, serde);
     let name = &input.ident;
     let (impl_generics, type_generics, where_clause) = serialization_generics.split_for_impl();
     let body = match model {
