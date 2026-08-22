@@ -62,23 +62,13 @@ name = "qubit-redact"
 version = "0.5.0"
 dependencies = [
  "qubit-budget",
+ "qubit-redact-derive",
  "serde",
 ]
 
 [[package]]
 name = "qubit-redact-derive"
 version = "0.5.0"
-dependencies = [
- "proc-macro-crate",
- "proc-macro2",
- "qubit-redact-derive-core",
- "quote",
- "syn 2.0.119",
-]
-
-[[package]]
-name = "qubit-redact-derive-core"
-version = "0.4.1"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",

@@ -245,7 +245,7 @@ fn writer_field_call(
         }
         FieldMode::Nested => quote! { __fields.nested(#field_name, #value); },
         FieldMode::Map => {
-            quote! { __fields.map(#field_name, #value); }
+            quote! { __fields.map_value(#field_name, #value); }
         }
         FieldMode::Json => quote! { __fields.json(#field_name, #value); },
         FieldMode::Skip => quote! { __fields.skipped(#field_name, || #value); },
