@@ -7,6 +7,11 @@ implementations for Rust domain types. It complements the
 [`qubit-redact`](https://docs.rs/qubit-redact) runtime: the runtime owns
 policies and masks; this crate applies those decisions to structs and enums.
 
+> **WARNING:** An unannotated derived field is permanently plain. `strict()`,
+> the application default, and inspection do not infer its sensitivity. Review
+> every new field; `#[redact(require_explicit)]` is an opt-in compile-time aid,
+> while `#[redact(skip)]` deliberately bypasses redaction.
+
 ## Contents
 
 - [Installation and example requirements](#installation-and-example-requirements)

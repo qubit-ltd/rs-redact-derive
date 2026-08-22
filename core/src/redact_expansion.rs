@@ -147,6 +147,11 @@ fn expand_with_container_attributes(
             pub fn redacted(&self) -> #runtime::RedactionTextOutput {
                 #runtime::Redactor::application_default().redact(self)
             }
+
+            #[must_use]
+            pub fn inspected(&self) -> #runtime::RedactionInspectionResult {
+                #runtime::Redactor::application_default().inspect(self)
+            }
         }
         #format_impl
         #serde_impl
@@ -155,11 +160,7 @@ fn expand_with_container_attributes(
 }
 
 /// Generates a structured writer body for one struct.
-fn writer_struct_body(
-    type_name: &Ident,
-    fields: &FieldsData<'_>,
-    runtime: &Path,
-) -> TokenStream {
+fn writer_struct_body(type_name: &Ident, fields: &FieldsData<'_>, runtime: &Path) -> TokenStream {
     match fields {
         FieldsData::Named(fields) => {
             let calls = fields.iter().filter_map(|field| {
@@ -282,7 +283,9 @@ fn writer_enum_body(
                     }
                 }
             }
-            FieldsData::Unit => quote! { Self::#variant_name => writer.record(stringify!(#variant_name), |_| {}), },
+            FieldsData::Unit => {
+                quote! { Self::#variant_name => writer.record(stringify!(#variant_name), |_| {}), }
+            }
         }
     });
     quote! {
@@ -312,7 +315,9 @@ fn writer_field_call(
             quote! { __fields.sensitive(#level, #field_name, || #value); }
         }
         FieldMode::Nested => quote! { __fields.nested(#field_name, #value); },
-        FieldMode::Map => quote! { __fields.sensitive(#runtime::Sensitivity::Low, #field_name, || #value); },
+        FieldMode::Map => {
+            quote! { __fields.sensitive(#runtime::Sensitivity::Low, #field_name, || #value); }
+        }
         FieldMode::Json => quote! { __fields.json(#field_name, #value); },
         FieldMode::Skip => unreachable!(),
     };

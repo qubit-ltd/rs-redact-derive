@@ -12,6 +12,11 @@ Qubit Redact Derive 为 [`qubit-redact`](https://crates.io/crates/qubit-redact)
 使用单一 `#[derive(Redact)]` 创建安全的借用诊断视图，并默认提供
 `RedactMut` 的逻辑替换能力。
 
+> **警告——未标注字段永久明文。** 生成的脱敏逻辑、`strict()` policy、application default
+> 和 inspection 都不会推断没有 `#[redact(...)]` 标记的字段是敏感字段。新增字段必须逐一
+> 人工复查。`#[redact(require_explicit)]` 只是可选的编译期审查工具；`#[redact(skip)]`
+> 会主动绕过脱敏。
+
 ## 为什么选择 qubit-redact-derive
 
 - 字段属性让掩码、忽略、嵌套脱敏和 Map 脱敏在领域模型边界清晰可审查。
@@ -178,12 +183,13 @@ serde_json = "1"
 ## 安全边界
 
 - 宏只保护实际使用的脱敏视图、生成格式化或显式原地操作，无法保护无关的日志调用或序列化路径。
-- 未标记字段使用自身的 `Debug` 输出；应标记表示中可能泄露敏感数据的每个字段，
+- 未标记字段在所有 policy 和 inspection 下始终使用自身的 `Debug` 输出；应标记表示中可能泄露敏感数据的每个字段，
   或选择 `#[redact(require_explicit)]` 并为有意直通的字段使用 `#[redact(plain)]`。
 - `skip` 只从脱敏表示中省略值，不会擦除原始值。
 - `RedactMut` 只做逻辑替换，不会擦除已释放的分配内存、别名、副本或借用后备存储。
-- `debug`、`display` 和直接 Serde 序列化使用进程级默认策略；调用点需要策略隔离时，应显式使用
-  `redacted_with` 边界。脱敏 `Debug` 默认使用策略的诊断输出预算；同一个脱敏视图内的
+- 生成的 `debug`、`display`、`redacted()`、`inspected()` 和无参数 `RedactMut` 方法使用进程级
+  application-default 策略；调用点需要策略隔离时，应显式使用 `redacted_with`、
+  `inspected_with` 或 mutation `_with` 边界。脱敏 `Debug` 默认使用策略的诊断输出预算；同一个脱敏视图内的
   `nested`、`map` 和 `json` 字段共享一个诊断 session，不会分别重置预算。
 - 不要在 `level`、`nested`、`map` 或 `json` 字段上使用 `skip_serializing_if`；该谓词会接收
   原始字段，可能通过字段是否存在泄露敏感状态。它只支持 `plain` 和 `skip` 字段。

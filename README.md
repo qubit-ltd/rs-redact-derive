@@ -14,6 +14,12 @@ safe borrowed diagnostic views with `Redact`, or explicitly replace logical
 values with `RedactMut`. A single `#[derive(Redact)]` generates both runtime
 capabilities by default.
 
+> **WARNING — unannotated fields are permanently plain.** Generated redaction,
+> `strict()` policies, the application default, and inspection never infer
+> sensitivity for a field without `#[redact(...)]`. Review every newly added
+> field. `#[redact(require_explicit)]` is an opt-in compile-time review aid;
+> `#[redact(skip)]` deliberately bypasses redaction.
+
 ## Why qubit-redact-derive
 
 - Field annotations make masking, omission, nested redaction, and map
@@ -197,7 +203,8 @@ does not enable runtime features for downstream crates.
 - The macros protect only the redacted view, generated formatting, or explicit
   in-place operation that you use. They cannot protect unrelated log calls or
   serialization paths.
-- An unmarked field uses its own `Debug` output. Mark every field whose
+- An unmarked field always uses its own `Debug` output under every policy and
+  during inspection. Mark every field whose
   representation can disclose sensitive data, or opt into
   `#[redact(require_explicit)]` and use `#[redact(plain)]` for intentional
   pass-through fields.
@@ -205,8 +212,9 @@ does not enable runtime features for downstream crates.
   the original value.
 - `RedactMut` performs logical replacement only. It does not erase released
   allocations, aliases, copies, or borrowed backing storage.
-- `debug`, `display`, and direct `serde` serialization use the process-wide
-  default policy. Use an explicit `redacted_with` boundary when a call site
+- Generated `debug`, `display`, `redacted()`, `inspected()`, and no-argument
+  `RedactMut` methods use the process-wide application-default policy. Use an
+  explicit `redacted_with`, `inspected_with`, or mutation `_with` boundary when a call site
   needs policy isolation.
   Redacted `Debug` output uses the policy diagnostic output budget by default.
   Nested, map, and JSON fields share the same diagnostic session for one

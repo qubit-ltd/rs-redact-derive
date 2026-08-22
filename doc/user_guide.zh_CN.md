@@ -6,6 +6,10 @@ Qubit Redact Derive 将字段级脱敏决策生成到 Rust 领域类型的实现
 [`qubit-redact`](https://docs.rs/qubit-redact) 运行时配合：运行时负责策略和掩码，
 本 crate 将这些决策应用到 struct 与 enum。
 
+> **警告：** derive 中未标注的字段永久按明文处理；`strict()`、application default 和
+> inspection 都不会推断它的敏感度。新增字段必须逐一人工复查；
+> `#[redact(require_explicit)]` 只是可选的编译期辅助，`#[redact(skip)]` 会主动绕过脱敏。
+
 ## 目录
 
 - [安装与示例运行方式](#安装与示例运行方式)

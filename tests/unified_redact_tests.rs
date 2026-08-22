@@ -7,7 +7,12 @@
 // =============================================================================
 //! Integration tests for the unified `Redact` derive.
 
+use qubit_redact::MaskPolicy;
+use qubit_redact::Redact as _;
 use qubit_redact::RedactMut as _;
+use qubit_redact::RedactionPolicy;
+use qubit_redact::Redactor;
+use qubit_redact::Sensitivity;
 use qubit_redact_derive::Redact;
 /// A domain value receiving both immutable and mutable capabilities from one
 /// derive.
@@ -19,7 +24,7 @@ struct User {
 }
 
 /// A domain value using all optional standard trait integrations together.
-#[derive(Redact)]
+#[derive(Clone, Redact)]
 #[redact(debug, display, serde)]
 struct FormattedUser {
     username: &'static str,
@@ -52,7 +57,7 @@ fn test_redact_derive_provides_immutable_and_mutable_capabilities() {
     };
 
     assert!(!format!("{:?}", user.redacted()).contains("raw-password"));
-    user.redact_in_place();
+    user.redact_in_place_with(Redactor::standard().policy());
     assert_eq!(user.password, "<redacted>");
 }
 
@@ -91,7 +96,49 @@ fn test_redact_derive_plain_borrowed_field_keeps_mutable_capability() {
         password: String::from("raw-password"),
     };
 
-    user.redact_in_place();
+    user.redact_in_place_with(Redactor::standard().policy());
     assert_eq!(user.username, "alice");
     assert_eq!(user.password, "<redacted>");
+}
+
+/// Generated no-argument formatting and mutation entry points must snapshot
+/// the configured application default rather than the deterministic standard.
+#[test]
+fn test_derived_no_argument_entry_points_use_application_default() {
+    let policy = RedactionPolicy::builder()
+        .fields(|fields| {
+            fields.mask(Sensitivity::Secret, MaskPolicy::fixed("<application-mask>"));
+        })
+        .expect("application policy should be valid")
+        .build()
+        .expect("application policy should build");
+    let previous = Redactor::replace_application_default(Redactor::new(policy));
+    let mut user = FormattedUser {
+        username: "alice",
+        password: String::from("raw-password"),
+    };
+
+    assert!(format!("{user:?}").contains("<application-mask>"));
+    assert!(format!("{user}").contains("<application-mask>"));
+    assert!(user.redacted().text().as_str().contains("<application-mask>"));
+    assert_eq!(
+        user.inspected().expect("inspection should complete").max_sensitivity(),
+        Some(Sensitivity::Secret)
+    );
+    assert!(
+        !user
+            .redacted_with(&Redactor::standard())
+            .text()
+            .as_str()
+            .contains("<application-mask>")
+    );
+
+    let cloned = user.to_redacted();
+    assert_eq!(cloned.password, "<application-mask>");
+    let consumed = user.clone().into_redacted();
+    assert_eq!(consumed.password, "<application-mask>");
+    user.redact_in_place();
+    assert_eq!(user.password, "<application-mask>");
+
+    let _ = Redactor::replace_application_default(previous);
 }
