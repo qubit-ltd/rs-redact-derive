@@ -13,7 +13,7 @@ use syn::meta::parser;
 use syn::parse::Parser;
 use syn::parse_quote;
 
-#[path = "../../core/src/internal/serde_directional_name.rs"]
+#[path = "../../src/internal/serde_directional_name.rs"]
 mod serde_directional_name;
 
 /// Parses the first rename control from a Serde attribute.

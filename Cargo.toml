@@ -19,11 +19,11 @@ include = [
     "/README.md",
     "/README.zh_CN.md",
     "/src/**",
-    "/core/**",
     "/doc/**",
     "/tests/**",
 ]
 publish = true
+autotests = false
 
 [package.metadata.docs.rs]
 all-features = true
@@ -33,10 +33,12 @@ test-json = ["qubit-redact/json"]
 
 [lib]
 proc-macro = true
-test = false
+
+[[test]]
+name = "compile_tests"
+path = "tests/compile_tests.rs"
 
 [dependencies]
-qubit-redact-derive-core = { version = "0.4.1", path = "core" }
 proc-macro-crate = "3"
 proc-macro2 = "1"
 quote = "1"
@@ -45,7 +47,6 @@ syn = "2"
 [dev-dependencies]
 qubit-redact = { version = "0.5", path = "../rs-redact", default-features = false, features = ["serde"] }
 qubit-budget = "0.3"
-qubit-redact-derive-core = { version = "0.4.1", path = "core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 trybuild = "1"

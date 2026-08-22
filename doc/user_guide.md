@@ -1,93 +1,28 @@
 # qubit-redact-derive User Guide
 
-[README](../README.md) · [中文用户手册](user_guide.zh_CN.md) · [Runtime User Guide](https://github.com/qubit-ltd/rs-redact/blob/main/doc/user_guide.md) · [Derive API](https://docs.rs/qubit-redact-derive)
+[README](../README.md) · [中文用户手册](user_guide.zh_CN.md) · [Runtime User Guide](https://github.com/qubit-ltd/rs-redact/blob/main/doc/user_guide.md)
 
-Qubit Redact Derive turns field-level redaction decisions into generated
-implementations for Rust domain types. It complements the
-[`qubit-redact`](https://docs.rs/qubit-redact) runtime: the runtime owns
-policies and masks; this crate applies those decisions to structs and enums.
+This crate supplies the `#[derive(Redact)]` macro. The runtime owns policies,
+budgets, and masks; the generated implementation only describes how a domain
+value writes itself through a `RedactionWriter`.
 
-> **WARNING:** An unannotated derived field is permanently plain. `strict()`,
-> the application default, and inspection do not infer its sensitivity. Review
-> every new field; `#[redact(require_explicit)]` is an opt-in compile-time aid,
-> while `#[redact(skip)]` deliberately bypasses redaction.
-
-## Contents
-
-- [Installation and example requirements](#installation-and-example-requirements)
-- [Core concepts](#core-concepts)
-- [1. Create a borrowed view with `Redact`](#1-create-a-borrowed-view-with-redact)
-- [2. Choose field handling](#2-choose-field-handling)
-- [3. Supported structs and enums](#3-supported-structs-and-enums)
-- [4. Replace logical values with generated `RedactMut`](#4-replace-logical-values-with-generated-redactmut)
-- [5. Generate `Debug` and `Display`](#5-generate-debug-and-display)
-- [6. Serialize a redacted view with Serde](#6-serialize-a-redacted-view-with-serde)
-- [7. Resolve dependencies and diagnose errors](#7-resolve-dependencies-and-diagnose-errors)
-- [Security boundaries and verification](#security-boundaries-and-verification)
-
-## Installation and example requirements
-
-The package is `qubit-redact-derive`; import its macros as
-`qubit_redact_derive`. The generated implementations depend on the runtime
-crate, so `qubit-redact` must be a direct dependency. Every runnable Rust
-example in this guide is a complete `main.rs`: use the dependency block for
-its section and run `cargo run`.
+## Installation
 
 ```toml
 [dependencies]
-qubit-redact = { version = "0.5", features = ["serde"] }
+qubit-redact = { version = "0.5", features = ["derive"] }
 qubit-redact-derive = "0.5"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
 ```
 
-The `serde` feature is needed only for `#[redact(serde)]`. Without it, the
-basic `Redact` derive has no Serde requirement. A single `Redact` derive
-generates both immutable `Redact` and mutable `RedactMut` capabilities by
-default.
+The generated code requires `qubit-redact` as a direct dependency. Cargo-renamed
+dependencies are supported. Enable the runtime `serde` feature and add a direct
+`serde` dependency when using `#[redact(serde)]`; enable `json` for
+`#[redact(json)]`.
 
-For `#[redact(json)]`, enable the runtime `json` feature as well. When a
-derive uses both JSON redaction and Serde, enable both features:
-`qubit-redact = { version = "0.5", features = ["serde", "json"] }`.
-
-The derive package's `test-json` feature is only for its own test suite; it
-does not enable runtime features for downstream crates.
-
-## Core concepts
-
-`Redact` and `RedactMut` are runtime trait names. The derive crate exposes one
-derive macro, `Redact`; import runtime traits separately when calling their
-extension methods:
+## Basic redaction
 
 ```rust
-use qubit_redact::domain::{Redact as _, RedactMut as _};
-use qubit_redact_derive::Redact;
-```
-
-`#[derive(Redact)]` implements both runtime traits unless the container uses
-`#[redact(no_mut)]`. Calling `redacted()` returns `Redacted<T>`, a lazy borrowed
-view that owns a snapshot of the policy and leaves `T` unchanged.
-`redacted_with(&policy)` chooses an explicit policy snapshot. The generated
-`RedactMut` capability provides `redact_in_place()`, `into_redacted()`, and
-`to_redacted()` where the selected fields support logical replacement.
-
-Use `#[redact(no_mut)]` for a type with sensitive borrowed fields such as
-`&str` that cannot be replaced in place. A plain borrowed field is not part of
-the mutable capability check, so it does not prevent mutable redaction of other
-owned sensitive fields.
-
-| Boundary | Prefer | Why |
-| --- | --- | --- |
-| Debug output, error context, structured diagnostics | `Redact` | The source object remains available and the redacted view is explicit. |
-| A later API must receive a logically redacted object | Generated `RedactMut` | Mutation is deliberate and visible at the call site. |
-| Policy isolation in a test or subsystem | `redacted_with` or `redact_in_place_with` | The call site owns the policy rather than using the process default. |
-
-## 1. Create a borrowed view with `Redact`
-
-Start with a field that should always be masked at a known sensitivity:
-
-```rust
-use qubit_redact::domain::Redact as _;
+use qubit_redact::Redactor;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]
@@ -95,308 +30,89 @@ struct Login {
     account: String,
     #[redact(level = "secret")]
     password: String,
+    #[redact(skip)]
+    recovery_code: String,
 }
 
-fn main() {
-    let login = Login {
-        account: "ada".to_owned(),
-        password: "raw-password".to_owned(),
-    };
-
-    let diagnostic = format!("{:?}", login.redacted());
-    assert!(diagnostic.contains("ada"));
-    assert!(!diagnostic.contains("raw-password"));
-    assert_eq!(login.password, "raw-password");
-}
+let login = Login {
+    account: "ada".into(),
+    password: "raw-password".into(),
+    recovery_code: "never-render".into(),
+};
+let output = Redactor::standard().redact(&login);
+assert!(output.text().as_str().contains("ada"));
+assert!(!output.text().as_str().contains("raw-password"));
+assert!(!output.text().as_str().contains("never-render"));
+assert_eq!(login.password, "raw-password");
 ```
 
-`Redacted<T>` formats the generated redacted representation. It is not a
-second domain object and does not expose an owned replacement of `T`.
+The source value is borrowed and unchanged. With a custom policy, use
+`Redactor::new(policy).redact(&value)`. The generated runtime implementation is
+the single `Redact::write_redacted` method; there is no mutable redaction trait.
 
-## 2. Choose field handling
+## Field modes
 
-Each field may have no `redact` attribute or exactly one of the following
-modes. Combining modes, repeating one, adding arguments to a bare mode, or
-using an empty `#[redact()]` attribute is a compile error.
+| Mode | Meaning |
+| --- | --- |
+| no attribute | Ordinary `Debug` formatting; no sensitivity inference. |
+| `level = "low"`, `"medium"`, `"high"`, `"secret"` | Mask with the selected sensitivity. |
+| `skip` | Omit the field. |
+| `nested` | Delegate to the nested `Redact` implementation. |
+| `map` | Apply key-aware policy to supported text-keyed maps. |
+| `json` | Recursively redact supported JSON text values. |
 
-| Attribute | Immutable `Redact` behavior | Mutable `RedactMut` behavior | Required runtime capability |
-| --- | --- | --- | --- |
-| none | Formats the field with ordinary `Debug`. | Leaves the field unchanged. | `Debug` for formatting. |
-| `level = "low"`, `"medium"`, `"high"`, or `"secret"` | Uses the selected mask. | Replaces the logical value with the selected mask. | `RedactValue` / `RedactValueMut`. |
-| `skip` | Omits the field. | Leaves the field unchanged. | None. |
-| `nested` | Formats the nested value through its `Redact` implementation. | Calls nested `RedactMut`. | `Redact` / `RedactMut`. |
-| `map` | Redacts text-keyed map values with keys and the full policy. | Redacts those map values in place. | `RedactMapValue` / `RedactMapValueMut`. |
-| `json` | Recursively redacts JSON text stored in a `String`; invalid JSON is replaced opaquely. | Rewrites the `String` as compact redacted JSON. | Runtime `json` feature. |
+The removed `plain`, `no_mut`, and `require_explicit` attributes are rejected.
+Use an unmarked field only when ordinary `Debug` output has been deliberately
+reviewed. The macro supports named, tuple, and unit structs and enum variants.
 
-The mutable implementation is generated unless the container uses
-`#[redact(no_mut)]`. A sensitive `&str` field therefore fails compilation when
-`no_mut` is omitted because it cannot implement `RedactValueMut`; the error
-points to the field and the missing capability. Use an owned mutable type or
-add `no_mut`. An ordinary borrowed field without a redaction mode does not require
-`RedactValueMut`, so it does not prevent mutable redaction of other fields.
+## Formatting and Serde
 
-Sensitivity spelling is lowercase and exact. These are the only accepted
-literals: `low`, `medium`, `high`, and `secret`.
-
-The following type demonstrates every immutable mode:
+Container attributes are opt-in:
 
 ```rust
-use std::collections::BTreeMap;
-
-use qubit_redact::domain::Redact as _;
-use qubit_redact_derive::Redact;
-
 #[derive(Redact)]
-struct Request {
-    request_id: String,
+#[redact(debug, display, serde)]
+struct Event {
+    name: String,
     #[redact(level = "secret")]
     token: String,
-    #[redact(skip)]
-    internal_note: String,
-    #[redact(map)]
-    metadata: BTreeMap<String, String>,
-}
-
-fn main() {
-    let request = Request {
-        request_id: "req-7".to_owned(),
-        token: "raw-token".to_owned(),
-        internal_note: "operator-only".to_owned(),
-        metadata: BTreeMap::from([("api_key".to_owned(), "raw-key".to_owned())]),
-    };
-    let output = format!("{:?}", request.redacted());
-    assert!(output.contains("req-7"));
-    assert!(!output.contains("raw-token"));
-    assert!(!output.contains("operator-only"));
 }
 ```
 
-Do not expect unmarked fields to be discovered or recursively inspected. If a
-field contains a domain object, use `nested`; if it is a supported text-keyed
-map, use `map`.
+`debug` and `display` generate policy-aware formatting for the original type.
+`serde` generates policy-aware `Serialize`; deserialization is not generated.
+Field modes remain the source of truth for the serialized representation, and
+`skip` remains omitted. Serialization-specific adapters are accepted only where
+they cannot observe a raw value through a redaction mode.
 
-The downstream application owns field sensitivity classification. This derive
-cannot infer whether a field is sensitive in a particular domain, so it
-intentionally does not require every field to be annotated. Mark fields that
-cross the application's redaction boundary, and use `plain` only for ordinary
-visibility that has been intentionally reviewed. Use `require_explicit` when a
-domain model's review policy requires every field to make that choice.
+## Parsed JSON values
 
-`json` is intended for fields whose outer Rust type is `String`. It redacts
-object members by key and keeps the field as a JSON string; it does not turn
-the field into a `serde_json::Value`. Invalid JSON is replaced by the policy's
-opaque mask.
-
-## 3. Supported structs and enums
-
-`Redact` accepts named, tuple, and unit structs. It also accepts enums with
-named, tuple, and unit variants. Field annotations work in every supported
-shape.
+The runtime also accepts a borrowed `serde_json::Value` without mutating it:
 
 ```rust
-use qubit_redact::domain::Redact as _;
-use qubit_redact_derive::Redact;
-
-#[derive(Redact)]
-enum Event {
-    Login {
-        user: String,
-        #[redact(level = "secret")]
-        token: String,
-    },
-    ApiKey(#[redact(level = "secret")] String),
-    Ready,
-}
-
-fn main() {
-    let event = Event::Login {
-        user: "ada".to_owned(),
-        token: "raw-token".to_owned(),
-    };
-    assert!(!format!("{:?}", event.redacted()).contains("raw-token"));
-    assert_eq!(format!("{:?}", Event::Ready.redacted()), "Ready");
-}
+let value = serde_json::json!({"password": "raw", "visible": "shown"});
+let output = Redactor::standard().redact_json_value(&value);
+let inspection = Redactor::standard().inspect_json_value(&value);
+assert!(!output.text().as_str().contains("raw"));
+assert_eq!(value["password"], "raw");
+let _ = inspection;
 ```
 
-Unions are rejected. The generated implementation preserves generic parameters
-and where clauses, while Rust verifies the field capabilities selected by each
-attribute.
+For multiple values, `RedactionBatch::redact_json_value` shares one budget and
+summary across the batch.
 
-## 4. Replace logical values with generated `RedactMut`
+## Safety and review checklist
 
-The same `#[derive(Redact)]` generates `RedactMut` by default. It changes only
-fields marked `level`, `nested`, or `map`; plain and `skip` fields remain
-unchanged. Add `#[redact(no_mut)]` to generate only immutable redaction.
+- Review every unmarked field; the derive does not infer business sensitivity.
+- Treat `skip` as output omission, not memory erasure.
+- Keep the source value private across unrelated logging and serialization paths.
+- Use an explicit `Redactor` policy when a subsystem must not inherit global defaults.
+- Run `cargo test --all-features`, `./align-ci.sh`, and `./ci-check.sh` before release.
 
-```rust
-use qubit_redact::domain::RedactMut as _;
-use qubit_redact_derive::Redact;
+See the [API documentation](https://docs.rs/qubit-redact-derive) and the
+[runtime guide](https://github.com/qubit-ltd/rs-redact/blob/main/doc/user_guide.md)
+for policy and format details.
 
-#[derive(Redact)]
-struct Credentials {
-    account: String,
-    #[redact(level = "secret")]
-    password: String,
-    #[redact(skip)]
-    audit_note: String,
-}
+## License
 
-fn main() {
-    let mut value = Credentials {
-        account: "ada".to_owned(),
-        password: "raw-password".to_owned(),
-        audit_note: "keep".to_owned(),
-    };
-
-    value.redact_in_place();
-    assert_eq!(value.password, "<redacted>");
-    assert_eq!(value.audit_note, "keep");
-}
-```
-
-Use `into_redacted()` to consume and redact a value, or `to_redacted()` to
-clone and redact it. Neither operation is memory zeroization.
-
-## 5. Generate `Debug` and `Display`
-
-On a `Redact` derive, `#[redact(debug)]` and `#[redact(display)]` generate
-formatting implementations for the original type. Both format through a
-snapshot of the current process-wide default policy.
-Redacted `Debug` output uses that policy's diagnostic output budget by default.
-Nested, map, and JSON fields reuse one diagnostic session for each redacted
-view, so nested formatting cannot reset the budget.
-
-```rust
-use qubit_redact_derive::Redact;
-
-#[derive(Redact)]
-#[redact(debug, display)]
-struct Secret {
-    #[redact(level = "secret")]
-    value: String,
-}
-
-fn main() {
-    let value = Secret {
-        value: "raw-secret".to_owned(),
-    };
-    assert!(!format!("{value:?}").contains("raw-secret"));
-    assert!(!format!("{value}").contains("raw-secret"));
-}
-```
-
-Do not request generated `Debug` or `Display` when the type already has an
-implementation of that trait. For a boundary that needs a non-default policy,
-avoid generated formatting and format `value.redacted_with(&policy)` instead.
-
-## 6. Serialize a domain object or view with Serde
-
-Serialization is opt-in. Add `#[redact(serde)]` to a `Redact` derive,
-enable `qubit-redact`'s `serde` feature, and declare `serde` directly. Direct
-serialization of the original type is redacted; `Redacted<T>` also serializes
-but does not deserialize.
-
-```rust
-use qubit_redact::domain::Redact as _;
-use qubit_redact_derive::Redact;
-
-#[derive(Redact)]
-#[redact(serde)]
-#[serde(rename_all = "camelCase")]
-struct LoginEvent {
-    account_name: String,
-    #[redact(level = "secret")]
-    token: String,
-    #[redact(skip)]
-    internal_note: String,
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let event = LoginEvent {
-        account_name: "ada".to_owned(),
-        token: "raw-token".to_owned(),
-        internal_note: "operator-only".to_owned(),
-    };
-
-    let json = serde_json::to_string(&event)?;
-    assert!(json.contains("accountName"));
-    assert!(!json.contains("raw-token"));
-    assert!(!json.contains("internal_note"));
-    Ok(())
-}
-```
-
-Direct serialization uses the process-wide default policy. Serializing
-`event.redacted_with(&policy)` remains available when the caller needs an
-explicit policy snapshot. `#[redact(serde)]` generates `Serialize`, but not
-`Deserialize`; a type may derive `Deserialize` independently.
-
-The macro preserves the currently supported Serde wire controls needed by the
-redacted representation:
-
-| Serde control | Redacted behavior |
-| --- | --- |
-| `rename`, `rename_all`, `rename_all_fields` | Applies the configured field and variant names. |
-| `skip`, `skip_serializing`, `skip_serializing_if` | Omits a field according to its serialization rule; `skip` and `skip_serializing` also omit an enum variant. |
-| `with`, `serialize_with` | Uses the adapter for a `plain` field; accepted on `skip` fields for compatibility but never called. |
-| `default`, `alias`, `skip_deserializing`, `deny_unknown_fields` | Accepted as deserialization-only controls and ignored by generated serialization. |
-| External tagging | Preserves the default enum wire shape. |
-| `tag` | Preserves internally tagged enum output. |
-| `tag` with `content` | Preserves adjacently tagged enum output. |
-| `untagged` | Preserves untagged enum output. |
-
-The macro reports a targeted error when `#[redact(serde)]` is used without
-the runtime `serde` feature or when an unsupported Serde control is present.
-Do not combine `skip_serializing_if` with `level`, `nested`, `map`, or `json`:
-the predicate receives the raw field and can reveal sensitive state through
-field presence. Use it only with `plain` or `skip` fields.
-Serialization adapters (`with` and `serialize_with`) follow the same safety
-boundary: they are accepted only with `plain` or `skip`. A `plain` adapter
-receives the original field intentionally, while redaction modes that inspect
-raw state reject adapters.
-
-## 7. Resolve dependencies and diagnose errors
-
-Generated code resolves the runtime through Cargo metadata. A renamed runtime
-dependency is valid:
-
-```toml
-[dependencies]
-redaction = { package = "qubit-redact", version = "0.5" }
-qubit-redact-derive = "0.5"
-```
-
-The derive macro still emits the correct path. Do not rely on a transitive
-runtime dependency: add it directly to the package that uses the derive.
-
-| Situation | What to do |
-| --- | --- |
-| The runtime crate cannot be resolved | Add `qubit-redact` as a direct dependency, or correct its Cargo rename. |
-| `#[redact(serde)]` reports a missing feature | Enable `qubit-redact = { features = ["serde"] }`. |
-| `#[redact(json)]` reports a missing feature | Enable `qubit-redact = { features = ["json"] }`; the field must be a `String`. |
-| Serde imports fail in the derived package | Add a direct `serde` dependency with the required derive feature. |
-| An attribute is rejected | Use exactly one field mode: `level = "..."`, `skip`, `nested`, `map`, or `json`; use bare container controls. |
-| A trait-bound error points at a field | Choose a mode supported by that field type, or implement the required runtime trait. |
-| A union is rejected | Derive only on supported struct and enum forms. |
-
-## Security boundaries and verification
-
-- The macro does not act as a secret detector. Every sensitive field must be
-  marked or contained by an explicitly nested or mapped boundary.
-- `Redact` protects only the representation obtained from `redacted()` or
-  `redacted_with()`; logging the original value remains unsafe.
-- `skip` removes a field from a derived view or serialized redacted output,
-  but leaves the source object intact.
-- `RedactMut` performs logical replacement only. Use a dedicated
-  zeroization design when memory erasure is required.
-- Treat `#[redact(debug)]`, `#[redact(display)]`, and every default-policy
-  call as process-wide policy decisions.
-- A `skip_serializing_if` predicate runs on the original field. Keep it on
-  `plain` or `skip` fields only; redacted modes reject it.
-
-Before publishing changes to derives or examples, run:
-
-```bash
-cargo test --all-features
-./ci-check.sh
-```
+Apache-2.0. See [LICENSE](../LICENSE).

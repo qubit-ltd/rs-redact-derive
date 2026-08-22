@@ -1,0 +1,27 @@
+error: cannot find derive macro `Redact` in this scope
+ --> tests/fixtures/fail/removed_attributes.rs:3:10
+  |
+3 | #[derive(Redact)]
+  |          ^^^^^^
+  |
+note: `Redact` is imported here, but it is only a trait, without a derive macro
+ --> tests/fixtures/fail/removed_attributes.rs:1:5
+  |
+1 | use qubit_redact::Redact;
+  |     ^^^^^^^^^^^^^^^^^^^^
+help: consider importing this derive macro
+  |
+1 + use qubit_redact_derive::Redact;
+  |
+
+error: cannot find attribute `redact` in this scope
+ --> tests/fixtures/fail/removed_attributes.rs:4:3
+  |
+4 | #[redact(no_mut)]
+  |   ^^^^^^
+
+error: cannot find attribute `redact` in this scope
+ --> tests/fixtures/fail/removed_attributes.rs:6:7
+  |
+6 |     #[redact(plain)]
+  |       ^^^^^^

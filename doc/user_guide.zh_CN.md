@@ -1,85 +1,26 @@
 # qubit-redact-derive 用户手册
 
-[README](../README.zh_CN.md) · [English User Guide](user_guide.md) · [运行时用户手册](https://github.com/qubit-ltd/rs-redact/blob/main/doc/user_guide.zh_CN.md) · [derive API](https://docs.rs/qubit-redact-derive)
+[README](../README.zh_CN.md) · [English User Guide](user_guide.md) · [运行时用户手册](https://github.com/qubit-ltd/rs-redact/blob/main/doc/user_guide.zh_CN.md)
 
-Qubit Redact Derive 将字段级脱敏决策生成到 Rust 领域类型的实现中。它与
-[`qubit-redact`](https://docs.rs/qubit-redact) 运行时配合：运行时负责策略和掩码，
-本 crate 将这些决策应用到 struct 与 enum。
+本 crate 提供 `#[derive(Redact)]` 宏。运行时负责策略、预算和掩码；生成的实现只描述
+领域值如何通过 `RedactionWriter` 写出。
 
-> **警告：** derive 中未标注的字段永久按明文处理；`strict()`、application default 和
-> inspection 都不会推断它的敏感度。新增字段必须逐一人工复查；
-> `#[redact(require_explicit)]` 只是可选的编译期辅助，`#[redact(skip)]` 会主动绕过脱敏。
-
-## 目录
-
-- [安装与示例运行方式](#安装与示例运行方式)
-- [核心概念](#核心概念)
-- [1. 用 `Redact` 创建借用视图](#1-用-redact-创建借用视图)
-- [2. 选择字段处理方式](#2-选择字段处理方式)
-- [3. 支持的 struct 与 enum](#3-支持的-struct-与-enum)
-- [4. 使用生成的 `RedactMut` 替换逻辑值](#4-使用生成的-redactmut-替换逻辑值)
-- [5. 生成 `Debug` 和 `Display`](#5-生成-debug-和-display)
-- [6. 用 Serde 序列化脱敏视图](#6-用-serde-序列化脱敏视图)
-- [7. 解析依赖与排查错误](#7-解析依赖与排查错误)
-- [安全边界与验证](#安全边界与验证)
-
-## 安装与示例运行方式
-
-包名是 `qubit-redact-derive`，宏的 Rust 导入路径是
-`qubit_redact_derive`。生成的实现依赖运行时 crate，因此 `qubit-redact` 必须是
-直接依赖。本手册中可运行的 Rust 示例都是完整的 `main.rs`：使用该节依赖并运行
-`cargo run`。
+## 安装
 
 ```toml
 [dependencies]
-qubit-redact = { version = "0.5", features = ["serde"] }
+qubit-redact = { version = "0.5", features = ["derive"] }
 qubit-redact-derive = "0.5"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
 ```
 
-`serde` feature 只在使用 `#[redact(serde)]` 时需要；基本的 `Redact` derive
-不要求 Serde。单一 `Redact` derive 默认同时生成 immutable `Redact` 和 mutable
-`RedactMut` 能力。
+生成代码要求 `qubit-redact` 是直接依赖，也支持 Cargo 重命名。使用
+`#[redact(serde)]` 时启用运行时 `serde` feature 并直接添加 `serde`；使用
+`#[redact(json)]` 时启用 `json` feature。
 
-使用 `#[redact(json)]` 时，还要启用运行时的 `json` feature。一个 derive 同时使用
-JSON 脱敏和 Serde 时，应同时启用两个 feature：
-`qubit-redact = { version = "0.5", features = ["serde", "json"] }`。
-
-派生 crate 的 `test-json` feature 仅用于自身测试，不会为下游 crate 启用运行时 feature。
-
-## 核心概念
-
-`Redact` 和 `RedactMut` 是运行时 trait 名。derive crate 只提供一个 `Redact`
-derive；调用扩展方法时分别导入运行时 trait：
+## 基本脱敏
 
 ```rust
-use qubit_redact::domain::{Redact as _, RedactMut as _};
-use qubit_redact_derive::Redact;
-```
-
-`#[derive(Redact)]` 默认同时实现两个运行时 trait；容器使用
-`#[redact(no_mut)]` 时只实现 immutable `Redact`。调用 `redacted()` 返回
-`Redacted<T>`：这是惰性的借用视图，持有策略快照而不修改 `T`。
-`redacted_with(&policy)` 使用显式策略快照。生成的 `RedactMut` 提供
-`redact_in_place()`、`into_redacted()` 和 `to_redacted()`，前提是被选字段支持逻辑替换。
-
-如果类型包含无法原地替换的敏感借用字段，例如 `&str`，请使用
-`#[redact(no_mut)]`。普通借用字段不参与 mutable capability 检查，因此不会阻止
-其他拥有式敏感字段进行原地脱敏。
-
-| 边界 | 首选方式 | 原因 |
-| --- | --- | --- |
-| Debug 输出、错误上下文、结构化诊断 | `Redact` | 源对象保持可用，脱敏视图清晰可见。 |
-| 后续 API 必须接收逻辑脱敏后的对象 | 生成的 `RedactMut` | 修改在调用点明确且有意。 |
-| 测试或子系统需要策略隔离 | `redacted_with` 或 `redact_in_place_with` | 调用点拥有策略，而不是使用进程默认值。 |
-
-## 1. 用 `Redact` 创建借用视图
-
-从一个已知敏感等级的字段开始：
-
-```rust
-use qubit_redact::domain::Redact as _;
+use qubit_redact::Redactor;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]
@@ -87,279 +28,84 @@ struct Login {
     account: String,
     #[redact(level = "secret")]
     password: String,
+    #[redact(skip)]
+    recovery_code: String,
 }
 
-fn main() {
-    let login = Login {
-        account: "ada".to_owned(),
-        password: "raw-password".to_owned(),
-    };
-
-    let diagnostic = format!("{:?}", login.redacted());
-    assert!(diagnostic.contains("ada"));
-    assert!(!diagnostic.contains("raw-password"));
-    assert_eq!(login.password, "raw-password");
-}
+let login = Login {
+    account: "ada".into(),
+    password: "raw-password".into(),
+    recovery_code: "never-render".into(),
+};
+let output = Redactor::standard().redact(&login);
+assert!(output.text().as_str().contains("ada"));
+assert!(!output.text().as_str().contains("raw-password"));
+assert!(!output.text().as_str().contains("never-render"));
+assert_eq!(login.password, "raw-password");
 ```
 
-`Redacted<T>` 格式化生成的脱敏表示。它不是第二个领域对象，也不提供 `T` 的拥有式替换。
+源对象只被借用且保持不变。需要自定义策略时使用
+`Redactor::new(policy).redact(&value)`。生成的运行时实现只有一个
+`Redact::write_redacted` 方法，不存在可变脱敏 trait。
 
-## 2. 选择字段处理方式
+## 字段模式
 
-每个字段可以没有 `redact` 属性，或恰好选择下列一种模式。组合模式、重复模式、向裸模式
-传递参数，或使用空的 `#[redact()]` 都会产生编译错误。
+| 模式 | 含义 |
+| --- | --- |
+| 无属性 | 使用普通 `Debug` 输出，不推断敏感度。 |
+| `level = "low"`、`"medium"`、`"high"`、`"secret"` | 按指定敏感等级掩码。 |
+| `skip` | 省略字段。 |
+| `nested` | 委托给嵌套值的 `Redact` 实现。 |
+| `map` | 对支持的文本 key Map 按 key 和策略处理。 |
+| `json` | 对支持的 JSON 文本递归处理。 |
 
-| 属性 | 不可变 `Redact` 行为 | 可变 `RedactMut` 行为 | 所需运行时能力 |
-| --- | --- | --- | --- |
-| 无 | 使用普通 `Debug` 格式化字段。 | 保持字段不变。 | 格式化需要 `Debug`。 |
-| `level = "low"`、`"medium"`、`"high"` 或 `"secret"` | 使用选定掩码。 | 用选定掩码替换逻辑值。 | `RedactValue` / `RedactValueMut`。 |
-| `skip` | 省略字段。 | 保持字段不变。 | 无。 |
-| `nested` | 通过嵌套值的 `Redact` 实现格式化。 | 调用嵌套的 `RedactMut`。 | `Redact` / `RedactMut`。 |
-| `map` | 使用 key 和完整策略处理文本 key Map 的值。 | 原地处理这些 Map 值。 | `RedactMapValue` / `RedactMapValueMut`。 |
-| `json` | 递归脱敏存储在 `String` 中的 JSON 文本；无效 JSON 会被不透明替换。 | 将 `String` 改写为紧凑的脱敏 JSON。 | 运行时 `json` feature。 |
+已移除的 `plain`、`no_mut` 和 `require_explicit` 属性会被拒绝。只有在普通
+`Debug` 输出经过明确审查时才保留未标注字段。宏支持具名、tuple、unit struct 和 enum
+variant 的这些形态。
 
-除非容器使用 `#[redact(no_mut)]`，否则默认生成 mutable 实现。敏感 `&str` 字段无法实现
-`RedactValueMut`，因此省略 `no_mut` 时会在字段位置编译失败，并指出缺失的能力。请改用
-可拥有且可修改的类型，或添加 `no_mut`。没有脱敏模式的普通借用字段不要求
-`RedactValueMut`，不会阻止其他
-字段进行可变脱敏。
+## 格式化与 Serde
 
-敏感等级拼写区分大小写且必须小写；仅接受 `low`、`medium`、`high` 和 `secret`。
-
-下面的类型展示所有不可变模式：
+容器属性需要显式启用：
 
 ```rust
-use std::collections::BTreeMap;
-
-use qubit_redact::domain::Redact as _;
-use qubit_redact_derive::Redact;
-
 #[derive(Redact)]
-struct Request {
-    request_id: String,
+#[redact(debug, display, serde)]
+struct Event {
+    name: String,
     #[redact(level = "secret")]
     token: String,
-    #[redact(skip)]
-    internal_note: String,
-    #[redact(map)]
-    metadata: BTreeMap<String, String>,
-}
-
-fn main() {
-    let request = Request {
-        request_id: "req-7".to_owned(),
-        token: "raw-token".to_owned(),
-        internal_note: "operator-only".to_owned(),
-        metadata: BTreeMap::from([("api_key".to_owned(), "raw-key".to_owned())]),
-    };
-    let output = format!("{:?}", request.redacted());
-    assert!(output.contains("req-7"));
-    assert!(!output.contains("raw-token"));
-    assert!(!output.contains("operator-only"));
 }
 ```
 
-不要期待未标记字段被发现或递归检查。字段包含领域对象时使用 `nested`；字段是支持的
-文本 key Map 时使用 `map`。
+`debug` 和 `display` 为原类型生成策略感知的格式化实现；`serde` 生成策略感知的
+`Serialize`，不生成反序列化实现。序列化表示仍以字段模式为准，`skip` 仍然省略。
+只有不会通过脱敏模式观察原始值的位置才允许序列化适配器。
 
-字段敏感性分类由下游应用及其领域模型维护者负责。派生宏无法推断字段在特定
-业务中的敏感性，因此有意不要求每个字段都添加属性。下游应用应标记跨越自身
-脱敏边界的字段；只有在经过审查并确实有意保持普通可见性时才使用 `plain`。
-如果领域模型的评审策略要求每个字段都做出选择，可以使用 `require_explicit`。
+## 解析 JSON 值
 
-`json` 用于外层 Rust 类型为 `String` 的字段。它按 key 递归处理对象成员，并保持字段为
-JSON 字符串；不会把字段转换为 `serde_json::Value`。无效 JSON 会被策略的不透明掩码替换。
-
-## 3. 支持的 struct 与 enum
-
-`Redact` 支持具名、tuple、unit struct，也支持具名、tuple、unit variant 的 enum。
-字段属性可用于所有受支持形态。
+运行时也支持借用 `serde_json::Value`，且不会修改它：
 
 ```rust
-use qubit_redact::domain::Redact as _;
-use qubit_redact_derive::Redact;
-
-#[derive(Redact)]
-enum Event {
-    Login {
-        user: String,
-        #[redact(level = "secret")]
-        token: String,
-    },
-    ApiKey(#[redact(level = "secret")] String),
-    Ready,
-}
-
-fn main() {
-    let event = Event::Login {
-        user: "ada".to_owned(),
-        token: "raw-token".to_owned(),
-    };
-    assert!(!format!("{:?}", event.redacted()).contains("raw-token"));
-    assert_eq!(format!("{:?}", Event::Ready.redacted()), "Ready");
-}
+let value = serde_json::json!({"password": "raw", "visible": "shown"});
+let output = Redactor::standard().redact_json_value(&value);
+let inspection = Redactor::standard().inspect_json_value(&value);
+assert!(!output.text().as_str().contains("raw"));
+assert_eq!(value["password"], "raw");
+let _ = inspection;
 ```
 
-union 会被拒绝。生成实现会保留泛型参数和 where clause，Rust 会验证字段满足所选属性需要的
-能力。
+批量处理时可使用 `RedactionBatch::redact_json_value`，在一批值之间共享预算和摘要。
 
-## 4. 使用生成的 `RedactMut` 替换逻辑值
+## 安全与审查清单
 
-同一个 `#[derive(Redact)]` 默认生成 `RedactMut`。它只修改标记为 `level`、`nested`
-或 `map` 的字段；普通字段和 `skip` 字段保持不变。添加
-`#[redact(no_mut)]` 可只生成 immutable 脱敏。
+- 逐一审查未标注字段；derive 不会推断业务敏感度。
+- `skip` 只是省略输出，不是内存擦除。
+- 在无关日志和序列化路径中继续保护源值。
+- 子系统需要隔离策略时使用显式 `Redactor`，不要依赖全局默认值。
+- 发布前运行 `cargo test --all-features`、`./align-ci.sh` 和 `./ci-check.sh`。
 
-```rust
-use qubit_redact::domain::RedactMut as _;
-use qubit_redact_derive::Redact;
+参见 [API 文档](https://docs.rs/qubit-redact-derive) 与[运行时手册](https://github.com/qubit-ltd/rs-redact/blob/main/doc/user_guide.zh_CN.md)。
 
-#[derive(Redact)]
-struct Credentials {
-    account: String,
-    #[redact(level = "secret")]
-    password: String,
-    #[redact(skip)]
-    audit_note: String,
-}
+## 许可证
 
-fn main() {
-    let mut value = Credentials {
-        account: "ada".to_owned(),
-        password: "raw-password".to_owned(),
-        audit_note: "keep".to_owned(),
-    };
-
-    value.redact_in_place();
-    assert_eq!(value.password, "<redacted>");
-    assert_eq!(value.audit_note, "keep");
-}
-```
-
-可使用 `into_redacted()` 消费并处理值，或使用 `to_redacted()` 克隆并处理值。两者都不是
-内存擦除。
-
-## 5. 生成 `Debug` 和 `Display`
-
-在 `Redact` derive 上，`#[redact(debug)]` 与 `#[redact(display)]` 会为原类型生成
-格式化实现。两者均通过当前进程级默认策略的快照格式化；脱敏 `Debug` 默认使用该策略的
-诊断输出预算。同一个脱敏视图内的嵌套对象、Map 和 JSON 字段共享一个诊断 session，嵌套
-格式化不会重置预算。
-
-```rust
-use qubit_redact_derive::Redact;
-
-#[derive(Redact)]
-#[redact(debug, display)]
-struct Secret {
-    #[redact(level = "secret")]
-    value: String,
-}
-
-fn main() {
-    let value = Secret {
-        value: "raw-secret".to_owned(),
-    };
-    assert!(!format!("{value:?}").contains("raw-secret"));
-    assert!(!format!("{value}").contains("raw-secret"));
-}
-```
-
-若类型已有对应 trait 实现，不要请求生成 `Debug` 或 `Display`。需要非默认策略的边界应避免
-生成格式化，改为格式化 `value.redacted_with(&policy)`。
-
-## 6. 用 Serde 序列化领域对象或脱敏视图
-
-序列化必须显式选择：在 `Redact` derive 上添加 `#[redact(serde)]`，启用
-`qubit-redact` 的 `serde` feature，并直接声明 `serde`。原类型直接序列化时会自动脱敏；
-`Redacted<T>` 也支持序列化，但不反序列化。
-
-```rust
-use qubit_redact::domain::Redact as _;
-use qubit_redact_derive::Redact;
-
-#[derive(Redact)]
-#[redact(serde)]
-#[serde(rename_all = "camelCase")]
-struct LoginEvent {
-    account_name: String,
-    #[redact(level = "secret")]
-    token: String,
-    #[redact(skip)]
-    internal_note: String,
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let event = LoginEvent {
-        account_name: "ada".to_owned(),
-        token: "raw-token".to_owned(),
-        internal_note: "operator-only".to_owned(),
-    };
-
-    let json = serde_json::to_string(&event)?;
-    assert!(json.contains("accountName"));
-    assert!(!json.contains("raw-token"));
-    assert!(!json.contains("internal_note"));
-    Ok(())
-}
-```
-
-直接序列化使用进程级默认策略；如果需要显式策略快照，仍可序列化
-`event.redacted_with(&policy)`。`#[redact(serde)]` 只生成 `Serialize`，不生成
-`Deserialize`；调用方可以独立派生 `Deserialize`。
-
-宏保留当前脱敏表示需要的 Serde wire 控制项：
-
-| Serde 控制项 | 脱敏行为 |
-| --- | --- |
-| `rename`、`rename_all`、`rename_all_fields` | 应用配置后的字段和 variant 名称。 |
-| `skip`、`skip_serializing`、`skip_serializing_if` | 按序列化规则省略字段；`skip` 和 `skip_serializing` 也可省略 enum variant。 |
-| `with`、`serialize_with` | 对 `plain` 字段使用适配器；为兼容性也接受于 `skip` 字段，但不会调用。 |
-| `default`、`alias`、`skip_deserializing`、`deny_unknown_fields` | 接受为仅影响反序列化的控制项，并在生成的序列化中忽略。 |
-| 外部标记 | 保留默认 enum wire 形态。 |
-| `tag` | 保留内部标记 enum 输出。 |
-| `tag` 与 `content` | 保留相邻标记 enum 输出。 |
-| `untagged` | 保留无标记 enum 输出。 |
-
-未启用运行时 `serde` feature 或出现不支持的 Serde 控制项时，宏会给出定向错误。
-不要在 `level`、`nested`、`map` 或 `json` 字段上组合 `skip_serializing_if`：该谓词会接收原始字段，
-可能通过字段是否存在泄露敏感状态。它只支持 `plain` 和 `skip` 字段。
-序列化适配器（`with` 和 `serialize_with`）遵循相同的安全边界：只接受用于 `plain` 或 `skip`。
-`plain` 适配器会有意接收原始字段值；会观察原始状态的脱敏模式会拒绝适配器。
-
-## 7. 解析依赖与排查错误
-
-生成代码通过 Cargo 元数据解析运行时。重命名运行时依赖同样有效：
-
-```toml
-[dependencies]
-redaction = { package = "qubit-redact", version = "0.5" }
-qubit-redact-derive = "0.5"
-```
-
-派生宏仍会生成正确路径。不要依赖传递性的运行时依赖；应在使用 derive 的 package 中直接添加它。
-
-| 情况 | 处理方式 |
-| --- | --- |
-| 无法解析运行时 crate | 直接添加 `qubit-redact`，或修正其 Cargo 重命名。 |
-| `#[redact(serde)]` 提示缺少 feature | 启用 `qubit-redact = { features = ["serde"] }`。 |
-| `#[redact(json)]` 提示缺少 feature | 启用 `qubit-redact = { features = ["json"] }`；字段必须是 `String`。 |
-| 派生 package 中 Serde 导入失败 | 直接添加具有所需 derive feature 的 `serde` 依赖。 |
-| 属性被拒绝 | 每个字段只使用一种模式：`level = "..."`、`skip`、`nested`、`map` 或 `json`；容器控制项必须是裸属性。 |
-| trait-bound 错误指向字段 | 选择该字段类型支持的模式，或实现所需运行时 trait。 |
-| union 被拒绝 | 只在受支持的 struct 与 enum 形态上派生。 |
-
-## 安全边界与验证
-
-- 宏不是秘密探测器。每个敏感字段都必须标记，或位于显式的 nested/map 边界内。
-- `Redact` 只保护通过 `redacted()` 或 `redacted_with()` 获得的表示；记录原始值仍然不安全。
-- `skip` 从派生视图或序列化的脱敏输出中移除字段，但保留源对象。
-- `RedactMut` 只进行逻辑替换；需要内存擦除时请使用专用的 zeroization 设计。
-- `#[redact(debug)]`、`#[redact(display)]` 以及每一次默认策略调用都应视为进程级策略决策。
-- `skip_serializing_if` 谓词会在原始字段上运行，只应使用在 `plain` 或 `skip` 字段上；脱敏模式会拒绝它。
-
-发布 derive 或示例变更前，运行：
-
-```bash
-cargo test --all-features
-./ci-check.sh
-```
+Apache-2.0，详见 [LICENSE](../LICENSE)。

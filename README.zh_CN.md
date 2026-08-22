@@ -7,35 +7,20 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![English Document](https://img.shields.io/badge/Document-English-blue.svg)](README.md)
 
-Qubit Redact Derive 为 [`qubit-redact`](https://crates.io/crates/qubit-redact)
-运行时 crate 提供过程派生宏。它在 Rust 领域对象上定义明确的脱敏边界：
-使用单一 `#[derive(Redact)]` 创建安全的借用诊断视图，并默认提供
-`RedactMut` 的逻辑替换能力。
-
-> **警告——未标注字段永久明文。** 生成的脱敏逻辑、`strict()` policy、application default
-> 和 inspection 都不会推断没有 `#[redact(...)]` 标记的字段是敏感字段。新增字段必须逐一
-> 人工复查。`#[redact(require_explicit)]` 只是可选的编译期审查工具；`#[redact(skip)]`
-> 会主动绕过脱敏。
-
-## 为什么选择 qubit-redact-derive
-
-- 字段属性让掩码、忽略、嵌套脱敏和 Map 脱敏在领域模型边界清晰可审查。
-- 宏支持具名、tuple、unit struct，以及拥有这三种 variant 形态的 enum。
-- 可选 Serde 支持让原类型直接序列化为脱敏表示，不提供反序列化或回到原始值的逃生接口。
-- 生成代码解析直接声明的 `qubit-redact` 依赖，支持 Cargo 重命名，而不依赖固定导入名。
+`qubit-redact-derive` 为 [`qubit-redact`](https://crates.io/crates/qubit-redact)
+提供 `#[derive(Redact)]` 过程派生宏。它把经过审查的字段属性转换为策略感知的
+`Redact::write_redacted` 实现。derive 不会修改源对象，也不提供可变脱敏 API。
 
 ## 快速开始
 
-同时添加运行时 crate 和派生 crate：
-
 ```toml
 [dependencies]
-qubit-redact = "0.5"
+qubit-redact = { version = "0.5", features = ["derive"] }
 qubit-redact-derive = "0.5"
 ```
 
 ```rust
-use qubit_redact::domain::Redact as _;
+use qubit_redact::Redactor;
 use qubit_redact_derive::Redact;
 
 #[derive(Redact)]
@@ -43,194 +28,70 @@ struct Credentials {
     user: String,
     #[redact(level = "secret")]
     password: String,
+    #[redact(skip)]
+    recovery_code: String,
 }
 
-fn main() {
-    let credentials = Credentials {
-        user: "ada".to_owned(),
-        password: "raw-password".to_owned(),
-    };
-
-    let output = format!("{:?}", credentials.redacted());
-    assert_eq!(
-        output,
-        r#"Credentials { user: "ada", password: "<redacted>" }"#,
-    );
-}
+let value = Credentials {
+    user: "ada".into(),
+    password: "raw-password".into(),
+    recovery_code: "never-render".into(),
+};
+let output = Redactor::standard().redact(&value);
+assert!(output.text().as_str().contains("ada"));
+assert!(!output.text().as_str().contains("raw-password"));
+assert!(!output.text().as_str().contains("never-render"));
 ```
 
-`Redact` 创建借用视图，原始 `Credentials` 仍可供应用逻辑使用。
+未标注字段使用普通 `Debug` 输出，不会被推断为敏感字段，也不会递归遍历；所有跨越
+脱敏边界的字段都必须明确审查。
 
-同一个 derive 默认也生成 `RedactMut` 能力：
+## 字段模式
+
+| 属性 | 行为 |
+| --- | --- |
+| 无属性 | 使用普通 `Debug` 输出。 |
+| `#[redact(level = "low"\|"medium"\|"high"\|"secret")]` | 按指定敏感等级掩码。 |
+| `#[redact(skip)]` | 从脱敏输出中省略。 |
+| `#[redact(nested)]` | 委托给嵌套值的 `Redact` 实现。 |
+| `#[redact(map)]` | 对支持的文本 key Map 按 key 和策略处理。 |
+| `#[redact(json)]` | 对支持的 JSON 文本按 JSON key 递归处理。 |
+
+`#[redact(plain)]`、`#[redact(no_mut)]` 和 `#[redact(require_explicit)]` 不属于当前契约。
+宏支持具名、tuple、unit struct，以及 enum 的这些 variant 形态。容器属性
+`#[redact(debug)]`、`#[redact(display)]` 和 `#[redact(serde)]` 都必须显式启用；Serde
+支持还需要运行时 `serde` feature 和直接声明的 `serde` 依赖。
+
+生成代码会解析直接声明的 `qubit-redact` 依赖，也支持 Cargo 重命名。运行时 trait 保持最小化：
 
 ```rust
-use qubit_redact::domain::RedactMut as _;
-use qubit_redact_derive::Redact;
-
-#[derive(Redact)]
-struct Credentials {
-    user: String,
-    #[redact(level = "secret")]
-    password: String,
-}
-
-fn main() {
-    let credentials = Credentials {
-        user: "ada".to_owned(),
-        password: "raw-password".to_owned(),
-    };
-    let credentials = credentials.into_redacted();
-    assert_eq!(credentials.password, "<redacted>");
+pub trait Redact {
+    fn write_redacted(&self, writer: &mut RedactionWriter<'_>);
 }
 ```
-
-类型包含无法原地替换的敏感借用字段时，使用 `#[redact(no_mut)]`。
-
-如果一个类型要求所有字段都经过显式审查，可添加
-`#[redact(require_explicit)]`。有意保持可见的字段使用 `#[redact(plain)]`；不添加
-该容器属性时，现有默认语义保持不变。
-
-## 如何选择派生宏
-
-| 需求 | 派生宏/属性 | 结果 |
-| --- | --- | --- |
-| 安全检查或记录领域对象，且不修改它 | `Redact` | 借用的 `Redacted<T>` 视图。 |
-| 在进入下一边界前替换拥有的逻辑值 | `Redact` | 使用同一 derive 生成的 `RedactMut` 调用 `redact_in_place()` 或 `into_redacted()`。 |
-| 让原类型通过进程默认策略格式化 | 带 `#[redact(debug)]` 或 `#[redact(display)]` 的 `Redact` | 为原类型生成 `Debug` 和/或 `Display`。 |
-| 让原类型直接序列化为脱敏 JSON | 带 `#[redact(serde)]` 的 `Redact` | 为原类型生成脱敏 `Serialize`，同时保留 `Redacted<T>` 的策略感知序列化。 |
-
-诊断场景应优先使用 immutable 能力；只有下一边界必须接收逻辑替换后的值时才使用
-同一 derive 生成的 mutable 能力。
-
-## 属性概览
-
-字段属性恰好选择一种处理模式：
-
-| 属性 | 效果 |
-| --- | --- |
-| `#[redact(level = "low")]`、`"medium"`、`"high"` 或 `"secret"` | 使用指定运行时敏感等级掩码该字段。 |
-| `#[redact(plain)]` | 保持字段可见，并记录这是有意的直通。 |
-| `#[redact(skip)]` | 从脱敏视图中省略该字段。 |
-| `#[redact(nested)]` | 将脱敏委托给嵌套值。 |
-| `#[redact(map)]` | 使用文本 key 和完整运行时策略处理 Map 的值。 |
-| `#[redact(json)]` | 递归按对象 key 脱敏存储在 `String` 中的 JSON；无效 JSON 会被不透明替换。 |
-
-容器属性是显式选择的控制项：
-
-| 属性 | 效果 |
-| --- | --- |
-| `#[redact(debug)]` | 为原类型生成脱敏 `Debug`。 |
-| `#[redact(display)]` | 为原类型生成脱敏 `Display`。 |
-| `#[redact(serde)]` | 为原类型生成脱敏 `Serialize`，并保留 `Redacted<T>` 的策略感知序列化。 |
-| `#[redact(no_mut)]` | 不生成 `RedactMut`；适用于 `&str` 等敏感借用字段。 |
-| `#[redact(require_explicit)]` | 要求每个字段选择一种字段模式；只影响当前 derive，不改变默认语义。 |
-
-这些选项可以合并写在一个属性中：
-
-```rust
-#[derive(Redact)]
-#[redact(debug, display, serde)]
-struct Login {
-    account: String,
-    #[redact(level = "secret")]
-    password: String,
-}
-```
-
-未标记字段默认使用其普通 `Debug` 表示，既不会被掩码，也不会被递归遍历。
-`require_explicit` 只改变写有该容器属性的 derive 调用。
-
-字段是否敏感、哪些字段需要脱敏，属于下游应用及其领域模型维护者的责任。
-派生宏无法判断某个字段在特定产品中的业务敏感性，因此有意不要求每个字段都
-添加属性。下游应用应标记跨越自身脱敏边界的字段；只有在经过审查并确实有意
-保持普通可见性时才使用 `plain`。如果模型的评审策略要求每个字段都做出选择，
-可以使用 `require_explicit`。
-
-启用 `#[redact(serde)]` 后，`default`、`alias`、`skip_deserializing`、
-`deny_unknown_fields` 等仅影响反序列化的 Serde 属性会被接受，并在生成的序列化中忽略。
-可能绕过脱敏或改变序列化结构的属性仍会被拒绝。
-序列化适配器（`with` 和 `serialize_with`）只接受用于 `plain` 或 `skip` 字段。
-`plain` 字段的适配器会有意接收原始字段值；会观察原始状态的脱敏模式会拒绝适配器，
-避免绕过生成的脱敏逻辑。
-
-## 依赖与 feature
-
-生成代码要求 `qubit-redact` 是直接依赖。派生 crate 会发现 Cargo 重命名，因此下列配置
-同样可用：
-
-```toml
-[dependencies]
-redaction = { package = "qubit-redact", version = "0.5" }
-qubit-redact-derive = "0.5"
-```
-
-使用 `#[redact(serde)]` 时，启用运行时 crate 的 `serde` feature，并直接声明
-`serde`：
-
-```toml
-[dependencies]
-qubit-redact = { version = "0.5", features = ["serde"] }
-qubit-redact-derive = "0.5"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-```
-
-`#[redact(json)]` 需要运行时 crate 的 `json` feature。它为 `Redact` 格式化脱敏 JSON
-视图，为 `RedactMut` 将字符串改写为紧凑脱敏 JSON；与 `#[redact(serde)]` 组合时仍序列化为 JSON 字符串。
-
-派生 crate 的 `test-json` feature 仅用于自身测试，不会为下游 crate 启用运行时 feature。
 
 ## 安全边界
 
-- 宏只保护实际使用的脱敏视图、生成格式化或显式原地操作，无法保护无关的日志调用或序列化路径。
-- 未标记字段在所有 policy 和 inspection 下始终使用自身的 `Debug` 输出；应标记表示中可能泄露敏感数据的每个字段，
-  或选择 `#[redact(require_explicit)]` 并为有意直通的字段使用 `#[redact(plain)]`。
-- `skip` 只从脱敏表示中省略值，不会擦除原始值。
-- `RedactMut` 只做逻辑替换，不会擦除已释放的分配内存、别名、副本或借用后备存储。
-- 生成的 `debug`、`display`、`redacted()`、`inspected()` 和无参数 `RedactMut` 方法使用进程级
-  application-default 策略；调用点需要策略隔离时，应显式使用 `redacted_with`、
-  `inspected_with` 或 mutation `_with` 边界。脱敏 `Debug` 默认使用策略的诊断输出预算；同一个脱敏视图内的
-  `nested`、`map` 和 `json` 字段共享一个诊断 session，不会分别重置预算。
-- 不要在 `level`、`nested`、`map` 或 `json` 字段上使用 `skip_serializing_if`；该谓词会接收
-  原始字段，可能通过字段是否存在泄露敏感状态。它只支持 `plain` 和 `skip` 字段。
+只有使用 `Redactor`、生成的格式化实现或生成的序列化实现的边界会受到保护。它不会擦除
+源对象，也不能保护无关的日志和序列化路径。`skip` 只省略输出，源字段仍保留在内存中。
+新增字段前必须复查其未标注语义。
 
-## 深入了解
+需要借用且保持不变的解析 JSON，可使用运行时
+`Redactor::redact_json_value(&serde_json::Value)` 或
+`Redactor::inspect_json_value(&serde_json::Value)`。
 
-- [English User Guide](doc/user_guide.md) 和[中文用户手册](doc/user_guide.zh_CN.md)
-- [运行时 README](https://github.com/qubit-ltd/rs-redact/blob/main/README.zh_CN.md) 和[运行时用户手册](https://github.com/qubit-ltd/rs-redact/blob/main/doc/user_guide.zh_CN.md)
-- [运行时 API 文档](https://docs.rs/qubit-redact)
-- [derive API 文档](https://docs.rs/qubit-redact-derive)
-
-## 测试
+## 开发
 
 ```bash
-# 使用默认 feature 集运行测试
 cargo test
-
-# 使用项目声明的全部 feature 运行测试
 cargo test --all-features
-
-# 运行项目 CI 检查
+./align-ci.sh
 ./ci-check.sh
-
-# 检查代码覆盖率
-./coverage.sh
 ```
+
+参见[英文用户手册](doc/user_guide.md)、[中文用户手册](doc/user_guide.zh_CN.md)和
+[运行时 crate](https://github.com/qubit-ltd/rs-redact)。
 
 ## 许可证
 
-Copyright (c) 2025 - 2026. Haixing Hu. All rights reserved.
-
-本项目基于 Apache License 2.0 授权。完整许可证文本请参阅
-[LICENSE](LICENSE)。
-
-## 贡献
-
-欢迎贡献。请遵循 Rust API 指南，及时更新公共 API 文档与测试，并在提交
-Pull Request 前运行 `./align-ci.sh`格式化代码，运行`./ci-check.sh`对齐CI要求。
-
-## 作者
-
-**Haixing Hu** - *Qubit Co. Ltd.*
-
-仓库地址：[https://github.com/qubit-ltd/rs-redact-derive](https://github.com/qubit-ltd/rs-redact-derive)
+Apache-2.0，详见 [LICENSE](LICENSE)。

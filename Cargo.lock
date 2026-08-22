@@ -98,22 +98,11 @@ dependencies = [
  "proc-macro2",
  "qubit-budget",
  "qubit-redact",
- "qubit-redact-derive-core",
  "quote",
  "serde",
  "serde_json",
  "syn 2.0.119",
  "trybuild",
-]
-
-[[package]]
-name = "qubit-redact-derive-core"
-version = "0.4.1"
-dependencies = [
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn 2.0.119",
 ]
 
 [[package]]
