@@ -98,6 +98,45 @@ fn serde_disabled_mode_restores_level_map_and_skip_values() {
     let _ = Redactor::replace_application_default(previous);
 }
 
+#[test]
+fn serde_structured_modes_share_depth_and_collection_budgets() {
+    let _guard = APPLICATION_DEFAULT_LOCK.lock().expect("default lock");
+    let policy = RedactionPolicy::builder()
+        .fields(|fields| {
+            fields.secret_sensitive("token");
+        })
+        .expect("field policy")
+        .limits(|limits| {
+            limits.max_depth(1);
+            limits.max_collection_items(1);
+        })
+        .expect("limits")
+        .build()
+        .expect("redaction policy");
+    let previous = Redactor::replace_application_default(Redactor::new(policy));
+
+    let mut headers = BTreeMap::new();
+    headers.insert("authorization".to_owned(), "raw-header".to_owned());
+    let value = Envelope {
+        child: Child {
+            token: "raw-token".to_owned(),
+        },
+        children: Some(vec![Child {
+            token: "raw-token-2".to_owned(),
+        }]),
+        headers,
+        hidden: "hidden-value".to_owned(),
+        levels: vec!["first".to_owned(), "second".to_owned()],
+    };
+
+    let encoded = serde_json::to_value(&value).expect("structured serialization");
+    assert!(encoded["child"].is_string());
+    assert!(encoded["levels"].is_string());
+    assert!(!encoded.to_string().contains("raw-token"));
+
+    let _ = Redactor::replace_application_default(previous);
+}
+
 #[cfg(feature = "test-json")]
 #[derive(Redact)]
 #[redact(serde)]
@@ -125,6 +164,21 @@ fn serde_json_mode_redacts_keyed_values_and_preserves_shape() {
     let encoded = serde_json::to_value(&value).expect("structured JSON serialization");
     assert_ne!(encoded["payload"]["token"], "raw-token");
     assert_eq!(encoded["payload"]["public"], "visible");
+
+    let _ = Redactor::replace_application_default(previous);
+}
+
+#[cfg(feature = "test-json")]
+#[test]
+fn serde_json_disabled_mode_keeps_json_text_as_text() {
+    let _guard = APPLICATION_DEFAULT_LOCK.lock().expect("default lock");
+    let previous = Redactor::replace_application_default(Redactor::new(RedactionPolicy::disabled()));
+    let value = JsonEnvelope {
+        payload: r#"{"token":"raw-token"}"#.to_owned(),
+    };
+
+    let encoded = serde_json::to_value(&value).expect("structured JSON serialization");
+    assert_eq!(encoded["payload"], r#"{"token":"raw-token"}"#);
 
     let _ = Redactor::replace_application_default(previous);
 }

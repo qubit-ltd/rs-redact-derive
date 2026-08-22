@@ -43,7 +43,13 @@ pub(crate) fn expand(
             where
                 __QubitRedactSerializer: #serde::Serializer,
             {
-                #body
+                #runtime::domain::internal::serialize_structured(
+                    serializer,
+                    policy,
+                    |serializer| {
+                        #body
+                    },
+                )
             }
         }
         #runtime::__qubit_redact_serde! {
@@ -59,6 +65,7 @@ pub(crate) fn expand(
                 {
                     let redactor = #runtime::Redactor::application_default();
                     let policy = redactor.policy();
+                    let _scope = #runtime::domain::internal::RedactSerializeScope::new(policy);
                     <Self as #runtime::domain::internal::RedactSerialize>::serialize_redacted(
                         self, serializer, policy,
                     )
