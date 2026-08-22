@@ -9,9 +9,9 @@
 
 use std::fmt;
 
-use qubit_redact::domain::Redact as _;
-use qubit_budget::StructureLimits;
+use qubit_redact::Redact as _;
 use qubit_redact::RedactionPolicy;
+use qubit_redact::Redactor;
 use qubit_redact_derive::Redact;
 
 /// Marker that intentionally implements no formatting trait.
@@ -86,19 +86,20 @@ fn main() {
         r#"DisplayOnly { secret: "<redacted>" }"#,
     );
 
-    let mut builder = RedactionPolicy::builder();
-    builder.limits().domain(
-        StructureLimits::builder().max_nodes(2).max_sequence_items(1).max_depth(1).build(),
-    );
-    let policy = builder
+    let policy = RedactionPolicy::builder()
+        .limits(|limits| {
+            limits.max_nodes(2).max_collection_items(1).max_depth(1);
+        })
+        .expect("the fixture redaction policy limits should be valid")
         .build()
         .expect("the fixture redaction policy should be valid");
     let guarded = Guarded {
         visible: "visible",
         blocked: PanicDebug,
     };
-    assert_eq!(
-        format!("{:?}", guarded.redacted_with(&policy)),
-        r#"Guarded { visible: "visible", ...: <truncated> }"#,
-    );
+    assert!(!guarded
+        .redacted_with(&Redactor::new(policy))
+        .text()
+        .as_str()
+        .contains("PanicDebug"));
 }

@@ -9,7 +9,7 @@
 
 use std::fmt::Debug;
 
-use qubit_redact::domain::Redact as RedactTrait;
+use qubit_redact::Redact as RedactTrait;
 use qubit_redact_derive::Redact;
 
 /// A generic record that retains its original where clause.
@@ -31,7 +31,7 @@ fn main() {
         name: "Alice".to_owned(),
     };
     assert_eq!(
-        format!("{:?}", value.redacted()),
+        value.redacted().text().as_str(),
         r#"GenericRecord { id: 7, name: "Alice" }"#,
     );
 }

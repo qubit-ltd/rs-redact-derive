@@ -1,25 +1,3 @@
-error[E0271]: type mismatch resolving `<&Vec<String> as IntoIterator>::Item == (&_, &_)`
-  --> tests/fixtures/fail/map_without_map_trait.rs:13:10
-   |
-13 | #[derive(Redact)]
-   |          ^^^^^^ expected `(&_, &_)`, found `&String`
-14 | struct Record {
-15 |     /// A vector does not expose string key/value map iteration.
-   |     ------------------------------------------------------------ required by a bound introduced by this call
-   |
-   = note:  expected tuple `(&_, &_)`
-           found reference `&String`
-   = note: required for `Vec<String>` to implement `RedactMapValue<_, _>`
-note: required by a bound in `__qubit_redact_Record_values_requires_RedactMapValue`
-  --> tests/fixtures/fail/map_without_map_trait.rs:13:10
-   |
-13 | #[derive(Redact)]
-   |          ^^^^^^ required by this bound in `__qubit_redact_Record_values_requires_RedactMapValue`
-14 | struct Record {
-15 |     /// A vector does not expose string key/value map iteration.
-   |     ------------------------------------------------------------ required by a bound in this function
-   = note: this error originates in the derive macro `Redact` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error[E0271]: type mismatch resolving `<&mut Vec<String> as IntoIterator>::Item == (&_, &mut _)`
   --> tests/fixtures/fail/map_without_map_trait.rs:13:10
    |

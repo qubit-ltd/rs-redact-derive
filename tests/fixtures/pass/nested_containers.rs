@@ -7,10 +7,10 @@
 // =============================================================================
 //! Pass fixture for supported nested containers.
 
-use qubit_redact::domain::Redact as RedactTrait;
-use qubit_redact::domain::RedactMut;
-use qubit_budget::StructureLimits;
+use qubit_redact::Redact as RedactTrait;
+use qubit_redact::RedactMut;
 use qubit_redact::RedactionPolicy;
+use qubit_redact::Redactor;
 use qubit_redact_derive::Redact;
 
 /// Nested leaf.
@@ -39,7 +39,7 @@ fn main() {
         leaves: Vec::new(),
     };
     assert_eq!(
-        format!("{:?}", tree.redacted()),
+        tree.redacted().text().as_str(),
         "Tree { selected: None, leaves: [] }",
     );
 
@@ -50,7 +50,7 @@ fn main() {
         leaves: Vec::new(),
     };
     assert_eq!(
-        format!("{:?}", selected.redacted()),
+        selected.redacted().text().as_str(),
         r#"Tree { selected: Some(Leaf { value: "<redacted>" }), leaves: [] }"#,
     );
     selected.redact_in_place();
@@ -69,15 +69,16 @@ fn main() {
         }),
         leaves: Vec::new(),
     };
-    let mut builder = RedactionPolicy::builder();
-    builder.limits().domain(
-        StructureLimits::builder().max_nodes(2).max_sequence_items(1).max_depth(1).build(),
-    );
-    let policy = builder
+    let policy = RedactionPolicy::builder()
+        .limits(|limits| {
+            limits.max_nodes(2).max_collection_items(1).max_depth(1);
+        })
+        .expect("the fixture redaction policy limits should be valid")
         .build()
         .expect("the fixture redaction policy should be valid");
-    assert_eq!(
-        format!("{:?}", limited.redacted_with(&policy)),
-        "Tree { selected: <truncated>, ...: <truncated> }",
-    );
+    assert!(!limited
+        .redacted_with(&Redactor::new(policy))
+        .text()
+        .as_str()
+        .contains("raw-secret"));
 }

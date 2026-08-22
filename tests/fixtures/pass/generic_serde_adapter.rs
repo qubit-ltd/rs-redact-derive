@@ -9,8 +9,9 @@
 
 use std::fmt;
 
-use qubit_redact::domain::Redact as _;
+use qubit_redact::Redact as _;
 use qubit_redact::RedactionPolicy;
+use qubit_redact::Redactor;
 use qubit_redact_derive::Redact;
 
 /// A value that implements `Debug` but intentionally not `Serialize`.
@@ -26,7 +27,7 @@ impl fmt::Debug for DebugOnly {
 /// Generic record whose field is serialized exclusively by an adapter.
 #[derive(Redact)]
 #[redact(serde)]
-struct GenericRecord<T> {
+struct GenericRecord<T: fmt::Debug> {
     /// Field handled by the generic adapter.
     #[redact(plain)]
     #[serde(serialize_with = "serialize_unit")]
@@ -48,7 +49,7 @@ where
 fn main() {
     let value = GenericRecord { value: DebugOnly };
     let policy = RedactionPolicy::default();
-    let _ = value.redacted_with(&policy);
+    let _ = value.redacted_with(&Redactor::new(policy));
     let _ = serde_json::to_value(value.redacted())
         .expect("generic adapter serialization should succeed");
 }

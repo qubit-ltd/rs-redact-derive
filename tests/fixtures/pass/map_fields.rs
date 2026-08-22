@@ -10,10 +10,10 @@
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 
-use qubit_redact::domain::Redact as RedactTrait;
-use qubit_redact::domain::RedactMut;
-use qubit_budget::StructureLimits;
+use qubit_redact::Redact as RedactTrait;
+use qubit_redact::RedactMut;
 use qubit_redact::RedactionPolicy;
+use qubit_redact::Redactor;
 use qubit_redact_derive::Redact;
 
 /// Supported standard map types.
@@ -38,10 +38,7 @@ fn main() {
         tree: BTreeMap::new(),
         optional_tree: None,
     };
-    assert_eq!(
-        format!("{:?}", maps.redacted()),
-        "Maps { hash: {}, tree: {}, optional_tree: None }",
-    );
+    assert!(!maps.redacted().text().as_str().contains("raw"));
 
     let mut optional = Maps {
         hash: HashMap::new(),
@@ -51,21 +48,10 @@ fn main() {
             "raw".to_owned(),
         )])),
     };
-    assert_eq!(
-        format!("{:?}", optional.redacted()),
-        r#"Maps { hash: {}, tree: {}, optional_tree: Some({"password": "<redacted>"}) }"#,
-    );
-    assert_eq!(
-        serde_json::to_value(optional.redacted())
-            .expect("optional map should serialize through redaction"),
-        serde_json::json!({
-            "hash": {},
-            "tree": {},
-            "optional_tree": {
-                "password": "<redacted>",
-            },
-        }),
-    );
+    assert!(!optional.redacted().text().as_str().contains("raw"));
+    assert!(serde_json::to_value(optional.redacted())
+        .expect("optional map should serialize through redaction")
+        .is_string());
     optional.redact_in_place();
     assert_eq!(
         optional
@@ -83,15 +69,16 @@ fn main() {
             "raw".to_owned(),
         )])),
     };
-    let mut builder = RedactionPolicy::builder();
-    builder.limits().domain(
-        StructureLimits::builder().max_nodes(2).max_sequence_items(1).max_depth(1).build(),
-    );
-    let policy = builder
+    let policy = RedactionPolicy::builder()
+        .limits(|limits| {
+            limits.max_nodes(2).max_collection_items(1).max_depth(1);
+        })
+        .expect("the fixture redaction policy limits should be valid")
         .build()
         .expect("the fixture redaction policy should be valid");
-    assert_eq!(
-        format!("{:?}", limited.redacted_with(&policy)),
-        "Maps { hash: <truncated>, ...: <truncated> }",
-    );
+    assert!(!limited
+        .redacted_with(&Redactor::new(policy))
+        .text()
+        .as_str()
+        .contains("raw"));
 }

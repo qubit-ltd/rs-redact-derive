@@ -119,13 +119,9 @@ fn expand_with_container_attributes(
     )?;
     let mut redaction_generics = input.generics.clone();
     generic_bounds::add_immutable_bounds(&mut redaction_generics, &model, runtime);
-    let immutable_assertions = match &model {
-        ContainerData::Struct(fields) => immutable_assertions(&input.ident, fields, runtime),
-        ContainerData::Enum(variants) => enum_immutable_assertions(&input.ident, variants, runtime),
-    };
     let write_body = match &model {
-        ContainerData::Struct(fields) => writer_struct_body(&input.ident, fields),
-        ContainerData::Enum(variants) => writer_enum_body(&input.ident, variants),
+        ContainerData::Struct(fields) => writer_struct_body(&input.ident, fields, runtime),
+        ContainerData::Enum(variants) => writer_enum_body(&input.ident, variants, runtime),
     };
     let format_impl =
         format_expansion::expand(input, runtime, &container_attributes, &redaction_generics);
@@ -138,13 +134,18 @@ fn expand_with_container_attributes(
     let (impl_generics, type_generics, where_clause) = redaction_generics.split_for_impl();
 
     Ok(quote! {
-        impl #impl_generics #runtime::domain::Redact for #name #type_generics #where_clause {
+        impl #impl_generics #runtime::Redact for #name #type_generics #where_clause {
             fn write_redacted(
                 &self,
-                writer: &mut #runtime::domain::RedactionWriter<'_, '_>,
+                writer: &mut #runtime::RedactionWriter<'_>,
             ) {
-                #(#immutable_assertions)*
                 #write_body
+            }
+        }
+        impl #impl_generics #name #type_generics #where_clause {
+            #[must_use]
+            pub fn redacted(&self) -> #runtime::RedactionTextOutput {
+                #runtime::Redactor::application_default().redact(self)
             }
         }
         #format_impl
@@ -154,7 +155,11 @@ fn expand_with_container_attributes(
 }
 
 /// Generates a structured writer body for one struct.
-fn writer_struct_body(type_name: &Ident, fields: &FieldsData<'_>) -> TokenStream {
+fn writer_struct_body(
+    type_name: &Ident,
+    fields: &FieldsData<'_>,
+    runtime: &Path,
+) -> TokenStream {
     match fields {
         FieldsData::Named(fields) => {
             let calls = fields.iter().filter_map(|field| {
@@ -166,6 +171,7 @@ fn writer_struct_body(type_name: &Ident, fields: &FieldsData<'_>) -> TokenStream
                     &field.identifier().to_string(),
                     field.attributes().mode(),
                     quote!(&self.#identifier),
+                    runtime,
                 )
             });
             quote! {
@@ -184,6 +190,7 @@ fn writer_struct_body(type_name: &Ident, fields: &FieldsData<'_>) -> TokenStream
                     &index.index.to_string(),
                     field.attributes().mode(),
                     quote!(&self.#index),
+                    runtime,
                 )
             });
             quote! {
@@ -192,14 +199,16 @@ fn writer_struct_body(type_name: &Ident, fields: &FieldsData<'_>) -> TokenStream
                 });
             }
         }
-        FieldsData::Unit => quote! {
-            writer.unit(stringify!(#type_name));
-        },
+        FieldsData::Unit => quote! { writer.record(stringify!(#type_name), |_| {}); },
     }
 }
 
 /// Generates a structured writer match for one enum.
-fn writer_enum_body(type_name: &Ident, variants: &[VariantData<'_>]) -> TokenStream {
+fn writer_enum_body(
+    type_name: &Ident,
+    variants: &[VariantData<'_>],
+    runtime: &Path,
+) -> TokenStream {
     let arms = variants.iter().map(|variant| {
         let variant_name = &variant.variant().ident;
         match variant.fields() {
@@ -223,6 +232,7 @@ fn writer_enum_body(type_name: &Ident, variants: &[VariantData<'_>]) -> TokenStr
                         &context,
                         field.attributes().mode(),
                         quote!(#identifier),
+                        runtime,
                     )
                 });
                 quote! {
@@ -261,6 +271,7 @@ fn writer_enum_body(type_name: &Ident, variants: &[VariantData<'_>]) -> TokenStr
                         &context,
                         field.attributes().mode(),
                         quote!(#binding),
+                        runtime,
                     )
                 });
                 quote! {
@@ -271,9 +282,7 @@ fn writer_enum_body(type_name: &Ident, variants: &[VariantData<'_>]) -> TokenStr
                     }
                 }
             }
-            FieldsData::Unit => quote! {
-                Self::#variant_name => writer.unit(stringify!(#variant_name)),
-            },
+            FieldsData::Unit => quote! { Self::#variant_name => writer.record(stringify!(#variant_name), |_| {}), },
         }
     });
     quote! {
@@ -291,41 +300,20 @@ fn writer_field_call(
     capability_name: &str,
     mode: &FieldMode,
     value: TokenStream,
+    runtime: &Path,
 ) -> Option<TokenStream> {
     if matches!(mode, FieldMode::Skip) {
         return None;
     }
     let call = match mode {
-        FieldMode::Plain => quote! {
-            __fields.field(#field_name, || #value);
-        },
-        FieldMode::Level(_) | FieldMode::Nested | FieldMode::Map | FieldMode::Json => {
-            let helper = field_assertion::helper_name(
-                type_name,
-                field,
-                capability_name,
-                immutable_trait_name(mode),
-            );
-            let argument =
-                if matches!(mode, FieldMode::Map) && field_assertion::is_direct_option(field) {
-                    quote! {
-                        __fields.optional_value(
-                            #field_name,
-                            #value,
-                            |__value, __session| {
-                                ::std::format!("{:?}", #helper(__value, __session))
-                            },
-                        );
-                    }
-                } else {
-                    quote! {
-                        __fields.value(#field_name, |__session| {
-                            #helper(#value, __session)
-                        });
-                    }
-                };
-            argument
+        FieldMode::Plain => quote! { __fields.unredacted(#field_name, || #value); },
+        FieldMode::Level(level) => {
+            let level = level.runtime_tokens(runtime);
+            quote! { __fields.sensitive(#level, #field_name, || #value); }
         }
+        FieldMode::Nested => quote! { __fields.nested(#field_name, #value); },
+        FieldMode::Map => quote! { __fields.sensitive(#runtime::Sensitivity::Low, #field_name, || #value); },
+        FieldMode::Json => quote! { __fields.json(#field_name, #value); },
         FieldMode::Skip => unreachable!(),
     };
     Some(quote_spanned! {field.span()=> #call })

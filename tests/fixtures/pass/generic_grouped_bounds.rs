@@ -7,7 +7,7 @@
 // =============================================================================
 //! Compile-pass fixture for generic types nested in grouped syntax.
 
-use qubit_redact::domain::Redact as _;
+use qubit_redact::Redact as _;
 use qubit_redact_derive::Redact;
 
 /// Generic record containing array and tuple fields.

@@ -187,11 +187,11 @@ pub(crate) fn mutable(
                     label = "this field cannot be redacted in place",
                     note = "if this type only needs immutable redaction, add #[redact(no_mut)] to the derived type",
                 )]
-                trait #capability: #runtime::domain::RedactValueMut {}
+                trait #capability: #runtime::RedactValueMut {}
 
                 impl<__QubitRedactField> #capability for __QubitRedactField
                 where
-                    __QubitRedactField: #runtime::domain::RedactValueMut + ?Sized,
+                    __QubitRedactField: #runtime::RedactValueMut + ?Sized,
                 {}
 
                 #[allow(non_snake_case)]
@@ -203,7 +203,7 @@ pub(crate) fn mutable(
                 where
                     __QubitRedactField: #capability + ?Sized,
                 {
-                    #runtime::domain::RedactValueMut::redact_value_in_place(
+                    #runtime::RedactValueMut::redact_value_in_place(
                         value,
                         #level,
                         policy.masking(),
@@ -220,11 +220,11 @@ pub(crate) fn mutable(
                     label = "this field cannot be redacted in place",
                     note = "if this type only needs immutable redaction, add #[redact(no_mut)] to the derived type",
                 )]
-                trait #capability: #runtime::domain::RedactMut {}
+                trait #capability: #runtime::RedactMut {}
 
                 impl<__QubitRedactField> #capability for __QubitRedactField
                 where
-                    __QubitRedactField: #runtime::domain::RedactMut + ?Sized,
+                    __QubitRedactField: #runtime::RedactMut + ?Sized,
                 {}
 
                 #[allow(non_snake_case)]
@@ -236,7 +236,7 @@ pub(crate) fn mutable(
                 where
                     __QubitRedactField: #capability + ?Sized,
                 {
-                    #runtime::domain::RedactMut::redact_in_place_with(value, policy);
+                    #runtime::RedactMut::redact_in_place_with(value, policy);
                 }
             }
         }
@@ -253,7 +253,7 @@ pub(crate) fn mutable(
                 trait #capability<
                     __QubitRedactKey: ?Sized,
                     __QubitRedactValue: ?Sized,
-                >: #runtime::domain::RedactMapValueMut<
+                >: #runtime::RedactMapValueMut<
                     __QubitRedactKey,
                     __QubitRedactValue,
                 > {}
@@ -266,7 +266,7 @@ pub(crate) fn mutable(
                     for __QubitRedactField
                 where
                     __QubitRedactField:
-                        #runtime::domain::RedactMapValueMut<
+                        #runtime::RedactMapValueMut<
                             __QubitRedactKey,
                             __QubitRedactValue,
                         > + ?Sized,
@@ -289,22 +289,11 @@ pub(crate) fn mutable(
                             __QubitRedactValue,
                         > + ?Sized,
                 {
-                    #runtime::domain::RedactMapValueMut::redact_map_in_place(value, policy);
+                    #runtime::RedactMapValueMut::redact_map_in_place(value, policy);
                 }
             }
         }
-        FieldMode::Json => quote_spanned! {field.span()=>
-            #runtime::__qubit_redact_json! {
-                #[allow(non_snake_case)]
-                #[inline(always)]
-                fn #helper(
-                    value: &mut ::std::string::String,
-                    policy: &#runtime::RedactionPolicy,
-                ) {
-                    #runtime::formats::json::redact_json_text_in_place(value, policy);
-                }
-            }
-        },
+        FieldMode::Json => TokenStream::new(),
     }
 }
 

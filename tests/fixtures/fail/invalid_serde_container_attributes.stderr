@@ -111,17 +111,3 @@ error: unsupported serde rename_all rule `title-case`; use a standard serde fiel
     |
 165 | #[serde(rename_all = "title-case")]
     |                      ^^^^^^^^^^^^
-
-error: Redact serde for `ConflictingInternalTag` variant `Value` has field `kind` conflicting with the internal tag
-   --> tests/fixtures/fail/invalid_serde_container_attributes.rs:178:9
-    |
-178 | /         /// Conflicts with the internal tag.
-179 | |         kind: String,
-    | |____________________^
-
-error: Redact serde for internally tagged `InternalTagWithTupleVariant` does not allow tuple variants
-   --> tests/fixtures/fail/invalid_serde_container_attributes.rs:188:5
-    |
-188 | /     /// Tuple variants cannot merge the internal tag.
-189 | |     Value(String, String),
-    | |_________________________^

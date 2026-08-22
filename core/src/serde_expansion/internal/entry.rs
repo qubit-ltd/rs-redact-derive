@@ -56,48 +56,13 @@ pub(crate) fn expand(
         return Ok(TokenStream::new());
     };
 
-    let serialization_assertions =
-        serialization_assertions(&input.ident, model, runtime, serde, &input.generics);
     let serializer = generic_bounds::fresh_identifier(&input.generics, "__QubitRedactSerializer");
-    let body = match model {
-        ContainerData::Struct(fields) => {
-            struct_body(&input.ident, fields, runtime, serde, container_attributes)
-        }
-        ContainerData::Enum(variants) => enum_body(
-            &input.ident,
-            variants,
-            runtime,
-            serde,
-            container_attributes,
-            &serializer,
-        )?,
-    };
-    let mut serialization_generics = input.generics.clone();
-    generic_bounds::add_serialization_bounds(&mut serialization_generics, model, runtime, serde);
+    let serialization_generics = input.generics.clone();
     let name = &input.ident;
     let (impl_generics, type_generics, where_clause) = serialization_generics.split_for_impl();
 
     Ok(quote! {
         #runtime::__qubit_redact_serde! {
-            impl #impl_generics #runtime::internal::RedactSerialize
-                for #name #type_generics #where_clause
-            {
-                fn serialize_redacted<#serializer>(
-                    &self,
-                    policy: &#runtime::RedactionPolicy,
-                    serializer: #serializer,
-                ) -> ::core::result::Result<
-                    #serializer::Ok,
-                    #serializer::Error,
-                >
-                where
-                    #serializer: #serde::Serializer,
-                {
-                    #(#serialization_assertions)*
-                    #body
-                }
-            }
-
             impl #impl_generics #serde::Serialize
                 for #name #type_generics #where_clause
             {
@@ -111,12 +76,8 @@ pub(crate) fn expand(
                 where
                     #serializer: #serde::Serializer,
                 {
-                    let policy = #runtime::RedactionPolicy::default();
-                    <Self as #runtime::internal::RedactSerialize>::serialize_redacted(
-                        self,
-                        &policy,
-                        serializer,
-                    )
+                    let output = #runtime::Redactor::application_default().redact(self);
+                    #serde::Serializer::serialize_str(serializer, output.text().as_str())
                 }
             }
         }

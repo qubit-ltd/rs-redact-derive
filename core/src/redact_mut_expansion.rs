@@ -57,7 +57,7 @@ pub(crate) fn expand(
     let (impl_generics, type_generics, where_clause) = redaction_generics.split_for_impl();
 
     Ok(quote! {
-        impl #impl_generics #runtime::domain::RedactMut for #name #type_generics #where_clause {
+        impl #impl_generics #runtime::RedactMut for #name #type_generics #where_clause {
             fn redact_in_place_with(&mut self, policy: &#runtime::RedactionPolicy) {
                 let _ = policy;
                 #(#mutable_assertions)*
@@ -159,7 +159,7 @@ fn named_mutations(
             let field = parsed.field();
             let identifier = parsed.identifier();
             let mode = parsed.attributes().mode();
-            if matches!(mode, FieldMode::Plain | FieldMode::Skip) {
+            if matches!(mode, FieldMode::Plain | FieldMode::Skip | FieldMode::Json) {
                 return None;
             }
             let field_name = identifier.to_string();
@@ -206,7 +206,7 @@ fn unnamed_mutations(
             let field = parsed.field();
             let index = parsed.index();
             let mode = parsed.attributes().mode();
-            if matches!(mode, FieldMode::Plain | FieldMode::Skip) {
+            if matches!(mode, FieldMode::Plain | FieldMode::Skip | FieldMode::Json) {
                 return None;
             }
             let field_name = index.index.to_string();
@@ -372,7 +372,7 @@ fn enum_named_mutation_arm(
         let field = parsed.field();
         let identifier = parsed.identifier();
         let mode = parsed.attributes().mode();
-        if matches!(mode, FieldMode::Plain | FieldMode::Skip) {
+        if matches!(mode, FieldMode::Plain | FieldMode::Skip | FieldMode::Json) {
             return None;
         }
         let field_name = identifier.to_string();
@@ -438,7 +438,7 @@ fn enum_unnamed_mutation_arm(
         .filter_map(|(parsed, binding)| {
             let field = parsed.field();
             let mode = parsed.attributes().mode();
-            if matches!(mode, FieldMode::Plain | FieldMode::Skip) {
+            if matches!(mode, FieldMode::Plain | FieldMode::Skip | FieldMode::Json) {
                 return None;
             }
             let field_name = parsed.index().index.to_string();

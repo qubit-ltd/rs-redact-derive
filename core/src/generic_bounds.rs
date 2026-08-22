@@ -55,12 +55,13 @@ pub(crate) fn add_immutable_bounds(
             add_trait_bound(generics, field, quote!(::core::fmt::Debug));
         }
         FieldMode::Level(_) => {
-            add_trait_bound(generics, field, quote!(#runtime::domain::RedactValue));
+            add_trait_bound(generics, field, quote!(::core::fmt::Debug));
         }
         FieldMode::Nested => {
-            add_trait_bound(generics, field, quote!(#runtime::domain::Redact));
+            add_trait_bound(generics, field, quote!(#runtime::Redact));
         }
-        FieldMode::Skip | FieldMode::Map | FieldMode::Json => {}
+        FieldMode::Map => add_trait_bound(generics, field, quote!(::core::fmt::Debug)),
+        FieldMode::Skip | FieldMode::Json => {}
     });
 }
 
@@ -79,10 +80,10 @@ pub(crate) fn add_mutable_bounds(
 ) {
     for_each_field(model, &mut |field, mode, _serialize_with| match mode {
         FieldMode::Level(_) => {
-            add_trait_bound(generics, field, quote!(#runtime::domain::RedactValueMut));
+            add_trait_bound(generics, field, quote!(#runtime::RedactValueMut));
         }
         FieldMode::Nested => {
-            add_trait_bound(generics, field, quote!(#runtime::domain::RedactMut));
+            add_trait_bound(generics, field, quote!(#runtime::RedactMut));
         }
         FieldMode::Plain | FieldMode::Skip | FieldMode::Map | FieldMode::Json => {}
     });

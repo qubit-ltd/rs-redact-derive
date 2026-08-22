@@ -7,8 +7,7 @@
 // =============================================================================
 //! Integration tests for the unified `Redact` derive.
 
-use qubit_redact::domain::Redact as _;
-use qubit_redact::domain::RedactMut as _;
+use qubit_redact::RedactMut as _;
 use qubit_redact_derive::Redact;
 /// A domain value receiving both immutable and mutable capabilities from one
 /// derive.

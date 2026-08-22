@@ -7,7 +7,7 @@
 // =============================================================================
 //! Compile-pass fixture for serializer-name collision avoidance.
 
-use qubit_redact::domain::Redact as _;
+use qubit_redact::Redact as _;
 use qubit_redact_derive::Redact;
 
 /// Generic parameter deliberately matching the old generated serializer name.

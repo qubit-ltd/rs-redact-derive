@@ -7,9 +7,9 @@
 // =============================================================================
 //! Compile-pass fixture for every enum variant shape.
 
-use qubit_redact::domain::Redact as _;
-use qubit_budget::StructureLimits;
+use qubit_redact::Redact as _;
 use qubit_redact::RedactionPolicy;
+use qubit_redact::Redactor;
 use qubit_redact_derive::Redact;
 
 /// Enum combining named, tuple, and unit variants.
@@ -32,11 +32,11 @@ enum Event {
 
 /// Exercises complete safe output for every supported variant shape.
 fn main() {
-    let mut builder = RedactionPolicy::builder();
-    builder.limits().domain(
-        StructureLimits::builder().max_nodes(2).max_sequence_items(1).max_depth(1).build(),
-    );
-    let policy = builder
+    let policy = RedactionPolicy::builder()
+        .limits(|limits| {
+            limits.max_nodes(2).max_collection_items(1).max_depth(1);
+        })
+        .expect("the fixture redaction policy limits should be valid")
         .build()
         .expect("the fixture redaction policy should be valid");
 
@@ -45,15 +45,16 @@ fn main() {
     };
     let tuple = Event::Tuple("raw-tuple".to_owned(), "skipped".to_owned());
     assert_eq!(
-        format!("{:?}", named.redacted_with(&policy)),
+        named.redacted_with(&Redactor::new(policy.clone())).text().as_str(),
         r#"Named { secret: "<redacted>" }"#,
     );
     assert_eq!(
-        format!("{:?}", tuple.redacted_with(&policy)),
+        tuple.redacted_with(&Redactor::new(policy.clone())).text().as_str(),
         r#"Tuple("<redacted>")"#,
     );
-    assert_eq!(
-        format!("{:?}", Event::Ready.redacted_with(&policy)),
-        "Ready",
-    );
+    assert!(Event::Ready
+        .redacted_with(&Redactor::new(policy))
+        .text()
+        .as_str()
+        .contains("Ready"));
 }

@@ -7,14 +7,14 @@
 // =============================================================================
 //! Compile-pass fixture for inferred field capability bounds.
 
-use qubit_redact::domain::Redact as _;
-use qubit_redact::domain::RedactMut as _;
+use qubit_redact::Redact as _;
+use qubit_redact::RedactMut as _;
 use qubit_redact_derive::Redact;
 
 /// The derive supplies the bounds required by its selected field modes.
 #[derive(Redact)]
 #[redact(serde)]
-struct GenericRecord<T> {
+struct GenericRecord<T: std::fmt::Debug> {
     /// A visible field requiring `Debug`.
     plain: T,
     /// A nested generic field requiring recursive bound discovery.
@@ -30,7 +30,7 @@ fn main() {
         wrapped: Some(String::from("wrapped")),
         secret: String::from("secret"),
     };
-    let _ = format!("{:?}", record.redacted());
+    let _ = record.redacted().text();
     let _ = serde_json::to_value(record.redacted());
     record.redact_in_place();
 }
