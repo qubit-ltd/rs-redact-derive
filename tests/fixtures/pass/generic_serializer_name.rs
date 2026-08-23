@@ -7,7 +7,6 @@
 // =============================================================================
 //! Compile-pass fixture for serializer-name collision avoidance.
 
-use qubit_redact::Redact as _;
 use qubit_redact_derive::Redact;
 
 /// Generic parameter deliberately matching the old generated serializer name.
@@ -24,6 +23,5 @@ fn main() {
     let value = Collision::<u8> {
         marker: core::marker::PhantomData,
     };
-    let _ = serde_json::to_value(value.redacted())
-        .expect("serializer-name collision should compile");
+    let _ = serde_json::to_value(value).expect("serializer-name collision should compile");
 }

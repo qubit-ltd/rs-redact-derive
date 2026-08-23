@@ -7,13 +7,14 @@
 // =============================================================================
 //! Runtime-crate path resolution for generated implementations.
 
+pub(crate) mod internal;
+
 use proc_macro_crate::crate_name;
 use syn::DeriveInput;
 use syn::Path;
 use syn::Result;
 use syn::parse_quote;
 
-use crate::internal::crate_path;
 /// Resolves the runtime path visible from the derive call site.
 ///
 /// # Parameters
@@ -31,7 +32,7 @@ use crate::internal::crate_path;
 /// expose the `qubit-redact` runtime dependency.
 #[inline(always)]
 pub(crate) fn resolve(input: &DeriveInput) -> Result<Path> {
-    crate_path::resolve(
+    internal::resolve(
         input,
         crate_name("qubit-redact"),
         parse_quote!(::qubit_redact),

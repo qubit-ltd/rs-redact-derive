@@ -10,22 +10,49 @@
 /// Verifies that all supported derive fixtures compile successfully.
 #[test]
 fn test_pass_fixtures() {
-    trybuild::TestCases::new().pass("tests/fixtures/pass/new_contract.rs");
-    trybuild::TestCases::new().pass("tests/fixtures/pass/serde_wire_shape.rs");
-}
-
-/// Keeps nested and map fixtures as an explicit regression boundary for the
-/// generated mutable-session forwarding contract.
-#[test]
-fn test_mutable_session_forwarding_fixtures() {
     let tests = trybuild::TestCases::new();
     tests.pass("tests/fixtures/pass/new_contract.rs");
+    tests.pass("tests/fixtures/pass/basic_named_struct.rs");
+    tests.pass("tests/fixtures/pass/enum_variants.rs");
+    tests.pass("tests/fixtures/pass/level_and_skip.rs");
+    tests.pass("tests/fixtures/pass/safe_formatting.rs");
+    tests.pass("tests/fixtures/pass/serde_coverage_shapes.rs");
+    tests.pass("tests/fixtures/pass/serde_deserialize_only.rs");
+    tests.pass("tests/fixtures/pass/tuple_and_unit_structs.rs");
+    tests.pass("tests/fixtures/pass/generic_serializer_name.rs");
+    tests.pass("tests/fixtures/pass/readme_quick_start.rs");
+    tests.pass("tests/fixtures/pass/recursive_level_containers.rs");
+    tests.pass("tests/fixtures/pass/nested_container_serde.rs");
+    tests.pass("tests/fixtures/pass/disabled_fields.rs");
     tests.pass("tests/fixtures/pass/serde_wire_shape.rs");
+    tests.pass("tests/fixtures/pass/generic_grouped_bounds.rs");
+    #[cfg(feature = "test-json")]
+    tests.pass("tests/fixtures/pass/json_string_variants.rs");
 }
 
 /// Verifies that invalid attributes produce stable targeted diagnostics.
 #[test]
 fn test_compile_fail_fixtures() {
     let tests = trybuild::TestCases::new();
+    tests.compile_fail("tests/fixtures/fail/conflicting_level_map.rs");
+    tests.compile_fail("tests/fixtures/fail/conflicting_level_nested.rs");
+    tests.compile_fail("tests/fixtures/fail/conflicting_map_skip.rs");
+    tests.compile_fail("tests/fixtures/fail/conflicting_modes.rs");
+    tests.compile_fail("tests/fixtures/fail/debug_trait_conflict.rs");
+    tests.compile_fail("tests/fixtures/fail/duplicate_attribute.rs");
+    tests.compile_fail("tests/fixtures/fail/duplicate_debug_option.rs");
+    tests.compile_fail("tests/fixtures/fail/empty_attribute.rs");
+    tests.compile_fail("tests/fixtures/fail/invalid_container_attributes.rs");
+    tests.compile_fail("tests/fixtures/fail/invalid_field_attribute_arguments.rs");
+    tests.compile_fail("tests/fixtures/fail/invalid_serde_container_attributes.rs");
+    tests.compile_fail("tests/fixtures/fail/invalid_serde_field_attributes.rs");
+    tests.compile_fail("tests/fixtures/fail/invalid_serde_variant_attributes.rs");
     tests.compile_fail("tests/fixtures/fail/removed_attributes.rs");
+    tests.compile_fail("tests/fixtures/fail/level_struct.rs");
+    tests.compile_fail("tests/fixtures/fail/sensitive_serde_adapter.rs");
+    tests.compile_fail("tests/fixtures/fail/map_wrong_key.rs");
+    tests.compile_fail("tests/fixtures/fail/nested_without_redact_serialize.rs");
+    tests.compile_fail("tests/fixtures/fail/union.rs");
+    tests.compile_fail("tests/fixtures/fail/unknown_attribute.rs");
+    tests.compile_fail("tests/fixtures/fail/unknown_level.rs");
 }

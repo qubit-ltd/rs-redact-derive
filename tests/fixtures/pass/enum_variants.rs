@@ -7,7 +7,6 @@
 // =============================================================================
 //! Compile-pass fixture for every enum variant shape.
 
-use qubit_redact::Redact as _;
 use qubit_redact::RedactionPolicy;
 use qubit_redact::Redactor;
 use qubit_redact_derive::Redact;
@@ -22,10 +21,7 @@ enum Event {
         secret: String,
     },
     /// Tuple variant with a sensitive and skipped field.
-    Tuple(
-        #[redact(level = "secret")] String,
-        #[redact(skip)] String,
-    ),
+    Tuple(#[redact(level = "secret")] String, #[redact(skip)] String),
     /// Unit variant.
     Ready,
 }
@@ -45,16 +41,18 @@ fn main() {
     };
     let tuple = Event::Tuple("raw-tuple".to_owned(), "skipped".to_owned());
     assert_eq!(
-        named.redacted_with(&Redactor::new(policy.clone())).text().as_str(),
+        Redactor::new(policy.clone()).redact(&named).text().as_str(),
         r#"Named { secret: "<redacted>" }"#,
     );
     assert_eq!(
-        tuple.redacted_with(&Redactor::new(policy.clone())).text().as_str(),
+        Redactor::new(policy.clone()).redact(&tuple).text().as_str(),
         r#"Tuple("<redacted>")"#,
     );
-    assert!(Event::Ready
-        .redacted_with(&Redactor::new(policy))
-        .text()
-        .as_str()
-        .contains("Ready"));
+    assert!(
+        Redactor::new(policy)
+            .redact(&Event::Ready)
+            .text()
+            .as_str()
+            .contains("Ready")
+    );
 }

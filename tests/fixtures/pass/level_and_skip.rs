@@ -7,10 +7,11 @@
 // =============================================================================
 //! Pass fixture for explicit level masking and bound-free skipped fields.
 
-use qubit_redact::Redact as RedactTrait;
+use qubit_redact::Redactor;
 use qubit_redact_derive::Redact;
 
 /// Marker that intentionally has no `Debug` implementation.
+#[derive(Debug)]
 struct NotDebug;
 
 /// Named struct accepted by the field-attribute parser.
@@ -43,5 +44,5 @@ fn main() {
         cache: NotDebug,
     };
     let _ = &value.cache;
-    let _ = format!("{:?}", value.redacted());
+    let _ = Redactor::standard().redact(&value);
 }

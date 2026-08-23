@@ -162,8 +162,119 @@ fn serde_json_mode_redacts_keyed_values_and_preserves_shape() {
         payload: r#"{"token":"raw-token","public":"visible"}"#.to_owned(),
     };
     let encoded = serde_json::to_value(&value).expect("structured JSON serialization");
-    assert_ne!(encoded["payload"]["token"], "raw-token");
-    assert_eq!(encoded["payload"]["public"], "visible");
+    let payload = encoded["payload"]
+        .as_str()
+        .expect("JSON mode preserves the string wire type");
+    let payload: serde_json::Value = serde_json::from_str(payload).expect("redacted JSON text remains valid");
+    assert_ne!(payload["token"], "raw-token");
+    assert_eq!(payload["public"], "visible");
+
+    let _ = Redactor::replace_application_default(previous);
+}
+
+fn is_zero(value: &u32) -> bool {
+    *value == 0
+}
+
+#[derive(Redact)]
+#[redact(serde)]
+struct PredicateEnvelope {
+    #[redact(level = "secret")]
+    #[serde(skip_serializing_if = "is_zero")]
+    secret_number: u32,
+    #[redact(skip)]
+    #[serde(skip_serializing_if = "String::is_empty")]
+    skipped_text: String,
+}
+
+#[derive(Redact)]
+#[redact(serde)]
+struct RecursiveMapEnvelope {
+    #[redact(map)]
+    values: BTreeMap<String, Option<Vec<(u32, String)>>>,
+}
+
+#[derive(Redact)]
+#[redact(serde)]
+struct InternalPayload {
+    #[redact(level = "secret")]
+    token: String,
+    visible: String,
+}
+
+#[derive(Redact)]
+#[redact(serde)]
+#[serde(tag = "kind")]
+enum InternallyTaggedEnvelope {
+    Nested(#[redact(nested)] InternalPayload),
+}
+
+#[test]
+fn serde_skip_predicates_observe_raw_values_for_every_redaction_mode() {
+    let _guard = APPLICATION_DEFAULT_LOCK.lock().expect("default lock");
+    let previous = Redactor::replace_application_default(Redactor::standard());
+    let enabled = serde_json::to_value(PredicateEnvelope {
+        secret_number: 0,
+        skipped_text: "not-evaluated-while-redaction-is-enabled".to_owned(),
+    })
+    .expect("enabled structured serialization");
+    assert!(enabled.get("secret_number").is_none());
+    assert!(enabled.get("skipped_text").is_none());
+
+    let _ = Redactor::replace_application_default(Redactor::new(RedactionPolicy::disabled()));
+    let disabled = serde_json::to_value(PredicateEnvelope {
+        secret_number: 7,
+        skipped_text: String::new(),
+    })
+    .expect("disabled structured serialization");
+    assert_eq!(disabled["secret_number"], 7);
+    assert!(disabled.get("skipped_text").is_none());
+
+    let _ = Redactor::replace_application_default(previous);
+}
+
+#[test]
+fn serde_map_mode_masks_each_recursive_scalar_leaf() {
+    let _guard = APPLICATION_DEFAULT_LOCK.lock().expect("default lock");
+    let policy = RedactionPolicy::builder()
+        .fields(|fields| {
+            fields.secret_sensitive("credential");
+        })
+        .expect("field policy")
+        .build()
+        .expect("redaction policy");
+    let previous = Redactor::replace_application_default(Redactor::new(policy));
+    let value = RecursiveMapEnvelope {
+        values: BTreeMap::from([
+            ("credential".to_owned(), Some(vec![(7, "raw-secret".to_owned())])),
+            ("public".to_owned(), Some(vec![(9, "shown".to_owned())])),
+        ]),
+    };
+
+    let encoded = serde_json::to_value(&value).expect("recursive map serialization");
+    assert!(encoded["values"]["credential"].is_array());
+    assert_ne!(encoded["values"]["credential"][0][0], 7);
+    assert_ne!(encoded["values"]["credential"][0][1], "raw-secret");
+    assert_eq!(encoded["values"]["public"][0][0], 9);
+    assert_eq!(encoded["values"]["public"][0][1], "shown");
+
+    let _ = Redactor::replace_application_default(previous);
+}
+
+#[test]
+fn serde_internally_tagged_newtype_merges_redacted_payload_beside_tag() {
+    let _guard = APPLICATION_DEFAULT_LOCK.lock().expect("default lock");
+    let previous = Redactor::replace_application_default(Redactor::standard());
+    let value = InternallyTaggedEnvelope::Nested(InternalPayload {
+        token: "raw-token".to_owned(),
+        visible: "shown".to_owned(),
+    });
+
+    let encoded = serde_json::to_value(&value).expect("internally tagged serialization");
+    assert_eq!(encoded["kind"], "Nested");
+    assert_ne!(encoded["token"], "raw-token");
+    assert_eq!(encoded["visible"], "shown");
+    assert!(encoded.get("payload").is_none());
 
     let _ = Redactor::replace_application_default(previous);
 }

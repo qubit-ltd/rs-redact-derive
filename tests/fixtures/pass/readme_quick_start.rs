@@ -7,7 +7,7 @@
 // =============================================================================
 //! Compiles the quick-start example published in the derive crate README.
 
-use qubit_redact::Redact as _;
+use qubit_redact::Redactor;
 use qubit_redact_derive::Redact;
 
 /// Credentials whose password is redacted at the secret level.
@@ -27,7 +27,7 @@ fn main() {
         password: String::from("raw-password"),
     };
     assert_eq!(
-        credentials.redacted().text().as_str(),
+        Redactor::standard().redact(&credentials).text().as_str(),
         r#"Credentials { user: "ada", password: "<redacted>" }"#,
     );
 }

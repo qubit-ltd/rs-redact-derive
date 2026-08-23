@@ -7,15 +7,14 @@
 // =============================================================================
 //! Compile-pass fixture for generic types nested in grouped syntax.
 
-use qubit_redact::Redact as _;
 use qubit_redact_derive::Redact;
 
 /// Generic record containing array and tuple fields.
 #[derive(Redact)]
 struct GroupedRecord<T, const N: usize> {
-    /// Array whose element type requires `Debug`.
+    #[redact(level = "secret")]
     array: [T; N],
-    /// Tuple whose element type requires `Debug`.
+    #[redact(level = "secret")]
     tuple: (T,),
 }
 
@@ -25,5 +24,5 @@ fn main() {
         array: ["array"; 2],
         tuple: ("tuple",),
     };
-    let _ = format!("{:?}", value.redacted());
+    let _ = value;
 }

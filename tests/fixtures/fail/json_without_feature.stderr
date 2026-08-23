@@ -1,7 +1,0 @@
-error[E0599]: no method named `json` found for mutable reference `&mut RedactionFields<'_, '_>` in the current scope
-  --> tests/fixtures/fail/json_without_feature.rs:13:10
-   |
-13 | #[derive(Redact)]
-   |          ^^^^^^ method not found in `&mut RedactionFields<'_, '_>`
-   |
-   = note: this error originates in the derive macro `Redact` (in Nightly builds, run with -Z macro-backtrace for more info)

@@ -8,7 +8,6 @@
 //! Fixture for a renamed runtime dependency.
 
 use qubit_redact_derive::Redact;
-use redaction_runtime::Redact as _;
 use redaction_runtime::RedactionPolicy;
 use redaction_runtime::Redactor;
 
@@ -25,7 +24,5 @@ fn main() {
     let value = Record {
         secret: "raw".to_owned(),
     };
-    let _ = value
-        .redacted_with(&Redactor::new(RedactionPolicy::default()))
-        .text();
+    let _ = Redactor::new(RedactionPolicy::default()).redact(&value);
 }

@@ -42,6 +42,38 @@ path = "tests/compile_tests.rs"
 name = "serde_runtime_tests"
 path = "tests/serde_runtime_tests.rs"
 
+[[test]]
+name = "serde_expansion_tests"
+path = "tests/serde_expansion_tests.rs"
+
+[[test]]
+name = "serde_enum_representation_tests"
+path = "tests/serde_enum_representation_tests.rs"
+
+[[test]]
+name = "unified_redact_tests"
+path = "tests/unified_redact_tests.rs"
+
+[[test]]
+name = "renamed_dependency_tests"
+path = "tests/renamed_dependency_tests.rs"
+
+[[test]]
+name = "runtime_path_tests"
+path = "tests/runtime_path_tests.rs"
+
+[[test]]
+name = "serde_dependency_tests"
+path = "tests/serde_dependency_tests.rs"
+
+[[test]]
+name = "serde_feature_guard_tests"
+path = "tests/serde_feature_guard_tests.rs"
+
+[[test]]
+name = "serde_path_tests"
+path = "tests/serde_path_tests.rs"
+
 [dependencies]
 proc-macro-crate = "3"
 proc-macro2 = "1"
@@ -49,7 +81,7 @@ quote = "1"
 syn = "2"
 
 [dev-dependencies]
-qubit-redact = { version = "0.5", path = "../rs-redact", default-features = false, features = ["serde"] }
+qubit-redact = { version = "0.5", path = "../rs-redact", default-features = false, features = ["serde", "json"] }
 qubit-budget = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

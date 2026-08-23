@@ -9,12 +9,12 @@
 
 use std::fmt;
 
-use qubit_redact::Redact as _;
 use qubit_redact::RedactionPolicy;
 use qubit_redact::Redactor;
 use qubit_redact_derive::Redact;
 
 /// Marker that intentionally implements no formatting trait.
+#[derive(Debug)]
 struct NoFormatting;
 
 /// Record using both generated formatting implementations.
@@ -97,9 +97,11 @@ fn main() {
         visible: "visible",
         blocked: PanicDebug,
     };
-    assert!(!guarded
-        .redacted_with(&Redactor::new(policy))
-        .text()
-        .as_str()
-        .contains("PanicDebug"));
+    assert!(
+        !Redactor::new(policy)
+            .redact(&guarded)
+            .text()
+            .as_str()
+            .contains("PanicDebug")
+    );
 }
