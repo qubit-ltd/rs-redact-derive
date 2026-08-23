@@ -1,8 +1,10 @@
 use std::collections::BTreeMap;
 use std::sync::Mutex;
 
+use qubit_redact::MaskPolicy;
 use qubit_redact::RedactionPolicy;
 use qubit_redact::Redactor;
+use qubit_redact::Sensitivity;
 use qubit_redact_derive::Redact;
 
 static APPLICATION_DEFAULT_LOCK: Mutex<()> = Mutex::new(());
@@ -196,6 +198,20 @@ struct RecursiveMapEnvelope {
 
 #[derive(Redact)]
 #[redact(serde)]
+struct InputBudgetEnvelope {
+    #[redact(level = "low")]
+    values: Vec<String>,
+}
+
+#[derive(Redact)]
+#[redact(serde)]
+struct InputBudgetMapEnvelope {
+    #[redact(map)]
+    values: BTreeMap<String, String>,
+}
+
+#[derive(Redact)]
+#[redact(serde)]
 struct InternalPayload {
     #[redact(level = "secret")]
     token: String,
@@ -257,6 +273,82 @@ fn serde_map_mode_masks_each_recursive_scalar_leaf() {
     assert_ne!(encoded["values"]["credential"][0][1], "raw-secret");
     assert_eq!(encoded["values"]["public"][0][0], 9);
     assert_eq!(encoded["values"]["public"][0][1], "shown");
+
+    let _ = Redactor::replace_application_default(previous);
+}
+
+#[test]
+fn test_serde_level_values_share_the_cumulative_input_budget() {
+    let _guard = APPLICATION_DEFAULT_LOCK.lock().expect("default lock");
+    let policy = RedactionPolicy::builder()
+        .fields(|fields| {
+            fields.mask(Sensitivity::Low, MaskPolicy::preserve_edges(1, 1, "#", 0));
+        })
+        .expect("masking policy")
+        .limits(|limits| {
+            limits.max_input_bytes(5);
+        })
+        .expect("limits")
+        .build()
+        .expect("redaction policy");
+    let previous = Redactor::replace_application_default(Redactor::new(policy));
+    let value = InputBudgetEnvelope {
+        values: vec!["abc".to_owned(), "def".to_owned()],
+    };
+
+    let encoded = serde_json::to_value(&value).expect("structured serialization");
+    assert_eq!(encoded["values"][0], "a#c");
+    assert_eq!(encoded["values"][1], "<redacted>");
+
+    let _ = Redactor::replace_application_default(previous);
+}
+
+#[test]
+fn test_disabled_serde_level_values_still_enforce_the_input_budget() {
+    let _guard = APPLICATION_DEFAULT_LOCK.lock().expect("default lock");
+    let policy = RedactionPolicy::disabled()
+        .to_builder()
+        .limits(|limits| {
+            limits.max_input_bytes(5);
+        })
+        .expect("limits")
+        .build()
+        .expect("redaction policy");
+    let previous = Redactor::replace_application_default(Redactor::new(policy));
+    let value = InputBudgetEnvelope {
+        values: vec!["abc".to_owned(), "def".to_owned()],
+    };
+
+    let encoded = serde_json::to_value(&value).expect("structured serialization");
+    assert_eq!(encoded["values"][0], "abc");
+    assert_eq!(encoded["values"][1], "<redacted>");
+
+    let _ = Redactor::replace_application_default(previous);
+}
+
+#[test]
+fn test_serde_map_values_share_the_cumulative_input_budget() {
+    let _guard = APPLICATION_DEFAULT_LOCK.lock().expect("default lock");
+    let policy = RedactionPolicy::builder()
+        .fields(|fields| {
+            fields
+                .low_sensitive("credential")
+                .mask(Sensitivity::Low, MaskPolicy::preserve_edges(1, 1, "#", 0));
+        })
+        .expect("field policy")
+        .limits(|limits| {
+            limits.max_input_bytes(2);
+        })
+        .expect("limits")
+        .build()
+        .expect("redaction policy");
+    let previous = Redactor::replace_application_default(Redactor::new(policy));
+    let value = InputBudgetMapEnvelope {
+        values: BTreeMap::from([("credential".to_owned(), "abc".to_owned())]),
+    };
+
+    let encoded = serde_json::to_value(&value).expect("structured serialization");
+    assert_eq!(encoded["values"]["credential"], "<redacted>");
 
     let _ = Redactor::replace_application_default(previous);
 }
