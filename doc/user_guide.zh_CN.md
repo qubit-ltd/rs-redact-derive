@@ -63,6 +63,12 @@ assert_eq!(login.password, "raw-password");
 `Debug` 输出经过明确审查时才保留未标注字段。宏支持具名、tuple、unit struct 和 enum
 variant 的这些形态。
 
+字段 capability 会在编译期检查。`level` 可递归处理 `Option`、`Vec`、数组和 tuple 中受
+支持的标量叶子，保持容器形状并逐叶掩码；`nested` 支持叶子实现 `Redact` 的 `Option` 和
+`Vec`；`map` 要求文本 key，并按每个 key 的策略递归处理 value 的标量叶子；`json`
+支持 `String`、`str`、`&str`、`Cow<str>` 及其受支持的可选形态，非法 JSON 会
+fail-closed。启用模式下 `skip` 不访问字段，禁用模式下恢复原字段。
+
 ## 格式化与 Serde
 
 容器属性需要显式启用：
@@ -81,6 +87,52 @@ struct Event {
 `Serialize`，不生成反序列化实现。序列化表示仍以字段模式为准，`skip` 仍然省略。
 只有不会通过脱敏模式观察原始值的位置才允许序列化适配器。
 
+结构化 REST 响应中的嵌套值仍保持对象和数组，而不会退化为脱敏后的 Debug 字符串：
+
+```rust
+use std::collections::BTreeMap;
+
+use qubit_redact_derive::Redact;
+
+#[derive(Redact)]
+#[redact(serde)]
+struct Profile {
+    name: String,
+    #[redact(level = "secret")]
+    token: String,
+}
+
+#[derive(Redact)]
+#[redact(serde)]
+struct ApiResponse {
+    ok: bool,
+    #[redact(level = "medium")]
+    attempts: u32,
+    #[redact(nested)]
+    profiles: Option<Vec<Profile>>,
+    #[redact(map)]
+    attributes: BTreeMap<String, Vec<String>>,
+    #[redact(json)]
+    audit: String,
+    #[redact(skip)]
+    internal_note: String,
+}
+
+fn encode(response: &ApiResponse) -> serde_json::Result<String> {
+    serde_json::to_string(response)
+}
+```
+
+启用脱敏时，被掩码的数字和布尔标量叶子会序列化为 JSON string，`Option::None` 仍是
+`null`。将 application-default policy 设为 disabled 后，原始 JSON 标量类型、map
+value、nested 字段、JSON 文本和 skip 字段都会恢复。`skip_serializing_if` 总是查看原始
+字段：非 skip 模式会先执行 predicate；启用的 `redact(skip)` 不调用 predicate；禁用
+`redact(skip)` 后 predicate 恢复执行。`with` 与 `serialize_with` 只允许用于未标注或
+skip 字段，不能与敏感模式组合。
+
+直接 Serde 没有 `RedactionSummary` 返回通道。非法或超出结构预算的内容仍然
+fail-closed；需要完成状态和详细原因时，应使用 `Redactor::redact` 并检查摘要。
+
 ## 解析 JSON 值
 
 运行时也支持借用 `serde_json::Value`，且不会修改它：
@@ -95,6 +147,23 @@ let _ = inspection;
 ```
 
 批量处理时可使用 `RedactionBatch::redact_json_value`，在一批值之间共享预算和摘要。
+
+## 启用与禁用输出
+
+全局禁用属于启动边界，会有意恢复原值：
+
+```rust
+use qubit_redact::{RedactionPolicy, Redactor};
+
+let mut policy = RedactionPolicy::disabled();
+assert!(policy.is_disabled());
+policy.set_disabled(false);
+let redactor = Redactor::new(policy);
+```
+
+策略启用时，即使摘要为 `Truncated` 或 `Exhausted`，文本也应保持保密安全。只有完整性、
+原因追踪和审计场景需要检查 summary，不要用它判断启用模式的文本是否可能包含秘密。
+若 inspection 用于安全决策，分类不完整时应按敏感处理。
 
 ## 安全与审查清单
 

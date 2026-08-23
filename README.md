@@ -12,13 +12,15 @@
 field annotations into a policy-aware `Redact::write_redacted` implementation.
 The derive never mutates the source value and exposes no mutable redaction API.
 
-## Quick start
+## Installation
 
 ```toml
 [dependencies]
 qubit-redact = { version = "0.5", features = ["derive"] }
 qubit-redact-derive = "0.5"
 ```
+
+## Quick Start
 
 ```rust
 use qubit_redact::Redactor;
@@ -86,18 +88,43 @@ For parsed JSON that must remain borrowed and unchanged, use the runtime API
 `Redactor::redact_json_value(&serde_json::Value)` or
 `Redactor::inspect_json_value(&serde_json::Value)`.
 
-## Development
-
-```bash
-cargo test
-cargo test --all-features
-./align-ci.sh
-./ci-check.sh
-```
+## Learn More
 
 See the [English user guide](doc/user_guide.md), [中文用户手册](doc/user_guide.zh_CN.md),
-and the [runtime crate](https://github.com/qubit-ltd/rs-redact).
+[API documentation](https://docs.rs/qubit-redact-derive), and the
+[runtime crate](https://github.com/qubit-ltd/rs-redact).
+
+## Testing
+
+```bash
+# Run tests with the default feature set
+cargo test
+
+# Run tests with all declared features
+cargo test --all-features
+
+# Project CI checks
+./ci-check.sh
+
+# Check code coverage
+./coverage.sh
+```
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+Copyright (c) 2025 - 2026. Haixing Hu. All rights reserved.
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the
+full license text.
+
+## Contributing
+
+Contributions are welcome. Please follow the Rust API guidelines, keep public
+API documentation and tests current, and run `./align-ci.sh` to format code and
+`./ci-check.sh` to satisfy CI requirements before submitting a pull request.
+
+## Author
+
+**Haixing Hu** - *Qubit Co. Ltd.*
+
+Repository: [https://github.com/qubit-ltd/rs-redact-derive](https://github.com/qubit-ltd/rs-redact-derive)

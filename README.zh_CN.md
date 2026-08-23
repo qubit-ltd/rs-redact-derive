@@ -11,13 +11,15 @@
 提供 `#[derive(Redact)]` 过程派生宏。它把经过审查的字段属性转换为策略感知的
 `Redact::write_redacted` 实现。derive 不会修改源对象，也不提供可变脱敏 API。
 
-## 快速开始
+## 安装
 
 ```toml
 [dependencies]
 qubit-redact = { version = "0.5", features = ["derive"] }
 qubit-redact-derive = "0.5"
 ```
+
+## 快速开始
 
 ```rust
 use qubit_redact::Redactor;
@@ -80,18 +82,42 @@ pub trait Redact {
 `Redactor::redact_json_value(&serde_json::Value)` 或
 `Redactor::inspect_json_value(&serde_json::Value)`。
 
-## 开发
+## 延伸阅读
+
+参见[英文用户手册](doc/user_guide.md)、[中文用户手册](doc/user_guide.zh_CN.md)、
+[API 文档](https://docs.rs/qubit-redact-derive)和
+[运行时 crate](https://github.com/qubit-ltd/rs-redact)。
+
+## 测试
 
 ```bash
+# 使用默认 feature 集运行测试
 cargo test
-cargo test --all-features
-./align-ci.sh
-./ci-check.sh
-```
 
-参见[英文用户手册](doc/user_guide.md)、[中文用户手册](doc/user_guide.zh_CN.md)和
-[运行时 crate](https://github.com/qubit-ltd/rs-redact)。
+# 使用项目声明的全部 feature 运行测试
+cargo test --all-features
+
+# 运行项目 CI 检查
+./ci-check.sh
+
+# 检查代码覆盖率
+./coverage.sh
+```
 
 ## 许可证
 
-Apache-2.0，详见 [LICENSE](LICENSE)。
+Copyright (c) 2025 - 2026. Haixing Hu. All rights reserved.
+
+本项目基于 Apache License 2.0 授权。完整许可证文本请参阅
+[LICENSE](LICENSE)。
+
+## 贡献
+
+欢迎贡献。请遵循 Rust API 指南，及时更新公共 API 文档与测试，并在提交
+Pull Request 前运行 `./align-ci.sh`格式化代码，运行`./ci-check.sh`对齐CI要求。
+
+## 作者
+
+**Haixing Hu** - *Qubit Co. Ltd.*
+
+仓库地址：[https://github.com/qubit-ltd/rs-redact-derive](https://github.com/qubit-ltd/rs-redact-derive)

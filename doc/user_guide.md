@@ -65,6 +65,15 @@ The removed `plain`, `no_mut`, and `require_explicit` attributes are rejected.
 Use an unmarked field only when ordinary `Debug` output has been deliberately
 reviewed. The macro supports named, tuple, and unit structs and enum variants.
 
+Capabilities are checked at compile time. `level` accepts supported scalar
+leaves recursively through `Option`, `Vec`, arrays, and tuples, preserving the
+container shape and masking every leaf. `nested` supports `Option` and `Vec`
+containers whose leaves implement `Redact`. `map` requires text keys and
+applies the key's policy to every recursive scalar leaf in its value. `json`
+accepts `String`, `str`, `&str`, `Cow<str>`, and their supported optional forms;
+invalid JSON fails closed. In enabled mode `skip` does not access the field; in
+disabled mode it restores the original field.
+
 ## Formatting and Serde
 
 Container attributes are opt-in:
@@ -85,6 +94,55 @@ Field modes remain the source of truth for the serialized representation, and
 `skip` remains omitted. Serialization-specific adapters are accepted only where
 they cannot observe a raw value through a redaction mode.
 
+For a structured REST response, nested values remain objects and arrays rather
+than redacted debug strings:
+
+```rust
+use std::collections::BTreeMap;
+
+use qubit_redact_derive::Redact;
+
+#[derive(Redact)]
+#[redact(serde)]
+struct Profile {
+    name: String,
+    #[redact(level = "secret")]
+    token: String,
+}
+
+#[derive(Redact)]
+#[redact(serde)]
+struct ApiResponse {
+    ok: bool,
+    #[redact(level = "medium")]
+    attempts: u32,
+    #[redact(nested)]
+    profiles: Option<Vec<Profile>>,
+    #[redact(map)]
+    attributes: BTreeMap<String, Vec<String>>,
+    #[redact(json)]
+    audit: String,
+    #[redact(skip)]
+    internal_note: String,
+}
+
+fn encode(response: &ApiResponse) -> serde_json::Result<String> {
+    serde_json::to_string(response)
+}
+```
+
+When redaction is enabled, masked numeric and boolean scalar leaves serialize
+as JSON strings; `Option::None` remains `null`. A disabled application-default
+policy restores original JSON scalar types, map values, nested fields, JSON
+text, and skipped fields. `skip_serializing_if` always observes the raw field:
+it runs before a non-skip mode, is not called for enabled `redact(skip)`, and is
+restored for disabled `redact(skip)`. `with` and `serialize_with` are allowed
+only for unmarked or skipped fields, never for a sensitive mode.
+
+Direct Serde has no `RedactionSummary` return channel. It still fails closed on
+invalid or over-budget structured content, while callers that require detailed
+completion reasons should use `Redactor::redact` and inspect its summary.
+
 ## Parsed JSON values
 
 The runtime also accepts a borrowed `serde_json::Value` without mutating it:
@@ -100,6 +158,24 @@ let _ = inspection;
 
 For multiple values, `RedactionBatch::redact_json_value` shares one budget and
 summary across the batch.
+
+## Enabled and disabled output
+
+Global disablement is a startup boundary and intentionally restores raw values:
+
+```rust
+use qubit_redact::{RedactionPolicy, Redactor};
+
+let mut policy = RedactionPolicy::disabled();
+assert!(policy.is_disabled());
+policy.set_disabled(false);
+let redactor = Redactor::new(policy);
+```
+
+Enabled output remains confidentiality-safe even when its summary is
+`Truncated` or `Exhausted`. Check summaries for completeness, provenance, or
+auditing—not to decide whether enabled text may contain a secret. Treat an
+inconclusive inspection as sensitive when it drives a security decision.
 
 ## Safety and review checklist
 
