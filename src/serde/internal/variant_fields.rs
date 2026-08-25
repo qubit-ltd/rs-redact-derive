@@ -16,9 +16,11 @@ use syn::Path;
 use syn::spanned::Spanned;
 
 use crate::attributes::SerdeContainerAttributes;
+use crate::model::FieldMode;
 use crate::model::NamedField;
 use crate::model::UnnamedField;
 use crate::model::VariantData;
+use crate::serde::field::FieldAccess;
 use crate::serde::field::field_context;
 use crate::serde::field::field_is_skipped;
 use crate::serde::field::raw_identifier;
@@ -46,7 +48,13 @@ pub(super) fn enum_named_parts(
     runtime: &Path,
     container_attributes: &SerdeContainerAttributes,
     variant: &VariantData<'_>,
-) -> (TokenStream, Vec<TokenStream>, Vec<TokenStream>, Vec<String>, Vec<Ident>) {
+) -> (
+    TokenStream,
+    Vec<TokenStream>,
+    Vec<TokenStream>,
+    Vec<String>,
+    Vec<Ident>,
+) {
     let patterns = fields.iter().map(|parsed| {
         let identifier = parsed.identifier();
         if field_is_skipped(parsed.attributes().mode(), parsed.serde_attributes()) {
@@ -67,9 +75,18 @@ pub(super) fn enum_named_parts(
         let identifier = parsed.identifier();
         let raw_name = raw_identifier(identifier);
         let container_name = container_attributes.rename_variant_field(&raw_name);
-        let default_name = variant.serde_attributes().rename_field(&raw_name, container_name);
-        let serialized_name = parsed.serde_attributes().rename().map_or(default_name, str::to_owned);
+        let default_name = variant
+            .serde_attributes()
+            .rename_field(&raw_name, container_name);
+        let serialized_name = parsed
+            .serde_attributes()
+            .rename()
+            .map_or(default_name, str::to_owned);
         let raw = quote_spanned!(field.span()=> #identifier);
+        let key_raw = match parsed.attributes().mode() {
+            FieldMode::KeyedBy(key) => Some(quote_spanned!(field.span()=> #key)),
+            _ => None,
+        };
         let context = field_context(Some(variant_name), Some(variant.index()), &raw_name);
         let carrier = format_ident!("__qubit_redact_serialized_{position}");
         let value = serialized_carrier(
@@ -79,9 +96,13 @@ pub(super) fn enum_named_parts(
             parsed.attributes().mode(),
             runtime,
             parsed.serde_attributes().serialize_with(),
-            raw.clone(),
+            FieldAccess {
+                raw: raw.clone(),
+                key_raw,
+            },
         );
-        let condition = serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
+        let condition =
+            serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
         setups.push(quote_spanned! {field.span()=>
             let #carrier = if #condition {
                 ::core::option::Option::Some(#value)
@@ -93,7 +114,13 @@ pub(super) fn enum_named_parts(
         names.push(serialized_name);
         carriers.push(carrier);
     }
-    (quote!({ #(#patterns),* }), setups, conditions, names, carriers)
+    (
+        quote!({ #(#patterns),* }),
+        setups,
+        conditions,
+        names,
+        carriers,
+    )
 }
 
 /// Builds bindings, carriers, and conditions for tuple enum fields.
@@ -153,9 +180,13 @@ pub(super) fn enum_unnamed_parts(
             parsed.attributes().mode(),
             runtime,
             parsed.serde_attributes().serialize_with(),
-            raw.clone(),
+            FieldAccess {
+                raw: raw.clone(),
+                key_raw: None,
+            },
         );
-        let condition = serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
+        let condition =
+            serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
         setups.push(quote_spanned! {field.span()=>
             let #carrier = if #condition {
                 ::core::option::Option::Some(#value)

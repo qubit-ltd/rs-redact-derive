@@ -58,7 +58,8 @@ impl FieldAttributes {
                     type_name,
                     field_name,
                     "expected `#[redact(level = \"...\")]`, `#[redact(skip)]`, \
-                     `#[redact(nested)]`, `#[redact(map)]`, or `#[redact(json)]`",
+                     `#[redact(nested)]`, `#[redact(map)]`, \
+                     `#[redact(keyed_by = key)]`, or `#[redact(json)]`",
                 ));
             };
             if list.tokens.is_empty() {
@@ -67,7 +68,7 @@ impl FieldAttributes {
                     type_name,
                     field_name,
                     "empty `#[redact()]` is not allowed; choose `level = \"...\"`, `skip`, \
-                     `nested`, `map`, or `json`",
+                     `nested`, `map`, `keyed_by = key`, or `json`",
                 ));
             }
             attribute.parse_nested_meta(|meta| {
@@ -106,7 +107,11 @@ impl FieldAttributes {
 ///
 /// Returns an error for unknown modes, missing level values, invalid
 /// sensitivity values, or arguments supplied to a bare mode.
-fn parse_mode(meta: &ParseNestedMeta<'_>, type_name: &Ident, field_name: &str) -> Result<FieldMode> {
+fn parse_mode(
+    meta: &ParseNestedMeta<'_>,
+    type_name: &Ident,
+    field_name: &str,
+) -> Result<FieldMode> {
     if meta.path.is_ident("level") {
         if !meta.input.peek(Token![=]) {
             return Err(meta.error(format!(
@@ -115,12 +120,19 @@ fn parse_mode(meta: &ParseNestedMeta<'_>, type_name: &Ident, field_name: &str) -
             )));
         }
         let literal: LitStr = meta.value()?.parse()?;
-        Ok(FieldMode::Level(Sensitivity::parse(&literal, type_name, field_name)?))
+        Ok(FieldMode::Level(Sensitivity::parse(
+            &literal, type_name, field_name,
+        )?))
     } else if meta.path.is_ident("skip") {
         require_bare(meta, type_name, field_name, "bare `skip` without arguments")?;
         Ok(FieldMode::Skip)
     } else if meta.path.is_ident("nested") {
-        require_bare(meta, type_name, field_name, "bare `nested` without arguments")?;
+        require_bare(
+            meta,
+            type_name,
+            field_name,
+            "bare `nested` without arguments",
+        )?;
         Ok(FieldMode::Nested)
     } else if meta.path.is_ident("map") {
         require_bare(
@@ -131,6 +143,15 @@ fn parse_mode(meta: &ParseNestedMeta<'_>, type_name: &Ident, field_name: &str) -
              and the complete policy",
         )?;
         Ok(FieldMode::Map)
+    } else if meta.path.is_ident("keyed_by") {
+        if !meta.input.peek(Token![=]) {
+            return Err(meta.error(format!(
+                "Redact derive for `{type_name}` field `{field_name}` requires \
+                 `keyed_by = sibling_field`",
+            )));
+        }
+        let key: Ident = meta.value()?.parse()?;
+        Ok(FieldMode::KeyedBy(key))
     } else if meta.path.is_ident("json") {
         require_bare(
             meta,
@@ -143,7 +164,8 @@ fn parse_mode(meta: &ParseNestedMeta<'_>, type_name: &Ident, field_name: &str) -
         let key = meta.path.to_token_stream().to_string();
         Err(meta.error(format!(
             "Redact derive for `{type_name}` field `{field_name}` has unknown \
-             attribute `{key}`; use `level = \"...\"`, `skip`, `nested`, `map`, or `json`",
+             attribute `{key}`; use `level = \"...\"`, `skip`, `nested`, `map`, \
+             `keyed_by = key`, or `json`",
         )))
     }
 }
@@ -162,7 +184,12 @@ fn parse_mode(meta: &ParseNestedMeta<'_>, type_name: &Ident, field_name: &str) -
 /// Returns an error when the nested item has a value or parenthesized
 /// arguments.
 #[inline]
-fn require_bare(meta: &ParseNestedMeta<'_>, type_name: &Ident, field_name: &str, requirement: &str) -> Result<()> {
+fn require_bare(
+    meta: &ParseNestedMeta<'_>,
+    type_name: &Ident,
+    field_name: &str,
+    requirement: &str,
+) -> Result<()> {
     if meta.input.peek(Token![=]) || meta.input.peek(Paren) {
         Err(meta.error(format!(
             "Redact derive for `{type_name}` field `{field_name}` requires {requirement}",
@@ -197,8 +224,8 @@ fn select_mode(
         return Err(meta.error(format!(
             "Redact derive for `{type_name}` field `{field_name}` has conflicting or \
              repeated modes; choose exactly one of `level = \"...\"`, `skip`, \
-             `nested`, `map`, or `json`; map values are classified by runtime key and the \
-             complete policy",
+             `nested`, `map`, `keyed_by = key`, or `json`; map and keyed values are \
+             classified by runtime key and the complete policy",
         )));
     }
     *selected = Some(mode);

@@ -59,6 +59,7 @@ the single `Redact::write_redacted` method; there is no mutable redaction trait.
 | `skip` | Omit the field. |
 | `nested` | Delegate to the nested `Redact` implementation. |
 | `map` | Apply key-aware policy to supported text-keyed maps. |
+| `keyed_by = key` | Classify this field by a sibling text key, using the same policy semantics as one map entry. |
 | `json` | Recursively redact supported JSON text values. |
 
 The removed `plain`, `no_mut`, and `require_explicit` attributes are rejected.
@@ -69,10 +70,14 @@ Capabilities are checked at compile time. `level` accepts supported scalar
 leaves recursively through `Option`, `Vec`, arrays, and tuples, preserving the
 container shape and masking every leaf. `nested` supports `Option` and `Vec`
 containers whose leaves implement `Redact`. `map` requires text keys and
-applies the key's policy to every recursive scalar leaf in its value. `json`
-accepts `String`, `str`, `&str`, `Cow<str>`, and their supported optional forms;
-invalid JSON fails closed. In enabled mode `skip` does not access the field; in
-disabled mode it restores the original field.
+applies the key's policy to every recursive scalar leaf in its value.
+`keyed_by` is available only on named fields; the sibling key must implement
+`AsRef<str>`, and the value uses the same recursive scalar capability as
+`level`. Standard policies pass unknown keyed values through, so configure
+sensitive keys explicitly or use a stricter policy when unknown payload keys
+must be masked. `json` accepts `String`, `str`, `&str`, `Cow<str>`, and their
+supported optional forms; invalid JSON fails closed. In enabled mode `skip`
+does not access the field; in disabled mode it restores the original field.
 
 ## Formatting and Serde
 

@@ -75,13 +75,20 @@ fn expand_with_container_attributes(
         .serde_enabled()
         .then(|| resolve_serde_path(input))
         .transpose()?;
-    let serde_container_attributes = SerdeContainerAttributes::parse(input, container_attributes.serde_enabled())?;
-    let serde_impl = serde::expand(input, runtime, serde.as_ref(), &serde_container_attributes, &model)?;
+    let serde_container_attributes =
+        SerdeContainerAttributes::parse(input, container_attributes.serde_enabled())?;
+    let serde_impl = serde::expand(
+        input,
+        runtime,
+        serde.as_ref(),
+        &serde_container_attributes,
+        &model,
+    )?;
     let mut redaction_generics = input.generics.clone();
     assertions::add_redact_bounds(&mut redaction_generics, &model, runtime);
     let write_body = match &model {
         ContainerData::Struct(fields) => writer_struct_body(&input.ident, fields, runtime),
-        ContainerData::Enum(variants) => writer_enum_body(&input.ident, variants, runtime),
+        ContainerData::Enum(variants) => writer_enum_body(variants, runtime),
     };
     let format_impl = format::expand(input, runtime, &container_attributes, &redaction_generics);
     let name = &input.ident;
@@ -107,13 +114,17 @@ fn writer_struct_body(type_name: &Ident, fields: &FieldsData<'_>, runtime: &Path
         FieldsData::Named(fields) => {
             let calls = fields.iter().filter_map(|field| {
                 let identifier = field.identifier();
+                let key_access = match field.attributes().mode() {
+                    FieldMode::KeyedBy(key) => Some(quote!(&self.#key)),
+                    _ => None,
+                };
                 writer_field_call(
-                    type_name,
                     field.field(),
                     &field.identifier().to_string(),
                     &field.identifier().to_string(),
                     field.attributes().mode(),
                     quote!(&self.#identifier),
+                    key_access,
                     runtime,
                 )
             });
@@ -127,12 +138,12 @@ fn writer_struct_body(type_name: &Ident, fields: &FieldsData<'_>, runtime: &Path
             let calls = fields.iter().filter_map(|field| {
                 let index = field.index();
                 writer_field_call(
-                    type_name,
                     field.field(),
                     &index.index.to_string(),
                     &index.index.to_string(),
                     field.attributes().mode(),
                     quote!(&self.#index),
+                    None,
                     runtime,
                 )
             });
@@ -147,7 +158,7 @@ fn writer_struct_body(type_name: &Ident, fields: &FieldsData<'_>, runtime: &Path
 }
 
 /// Generates a structured writer match for one enum.
-fn writer_enum_body(type_name: &Ident, variants: &[VariantData<'_>], runtime: &Path) -> TokenStream {
+fn writer_enum_body(variants: &[VariantData<'_>], runtime: &Path) -> TokenStream {
     let arms = variants.iter().map(|variant| {
         let variant_name = &variant.variant().ident;
         match variant.fields() {
@@ -160,13 +171,17 @@ fn writer_enum_body(type_name: &Ident, variants: &[VariantData<'_>], runtime: &P
                     let identifier = field.identifier();
                     let field_name = identifier.to_string();
                     let context = variant_field_context(variant.index(), variant_name, &field_name);
+                    let key_access = match field.attributes().mode() {
+                        FieldMode::KeyedBy(key) => Some(quote!(#key)),
+                        _ => None,
+                    };
                     writer_field_call(
-                        type_name,
                         field.field(),
                         &field_name,
                         &context,
                         field.attributes().mode(),
                         quote!(#identifier),
+                        key_access,
                         runtime,
                     )
                 });
@@ -197,12 +212,12 @@ fn writer_enum_body(type_name: &Ident, variants: &[VariantData<'_>], runtime: &P
                     let field_name = field.index().index.to_string();
                     let context = variant_field_context(variant.index(), variant_name, &field_name);
                     writer_field_call(
-                        type_name,
                         field.field(),
                         &field_name,
                         &context,
                         field.attributes().mode(),
                         quote!(#binding),
+                        None,
                         runtime,
                     )
                 });
@@ -228,12 +243,12 @@ fn writer_enum_body(type_name: &Ident, variants: &[VariantData<'_>], runtime: &P
 
 /// Generates one structured writer field call.
 fn writer_field_call(
-    _type_name: &Ident,
     field: &Field,
     field_name: &str,
     _capability_name: &str,
     mode: &FieldMode,
     value: TokenStream,
+    key_access: Option<TokenStream>,
     runtime: &Path,
 ) -> Option<TokenStream> {
     let call = match mode {
@@ -245,6 +260,10 @@ fn writer_field_call(
         FieldMode::Nested => quote! { __fields.nested(#field_name, #value); },
         FieldMode::Map => {
             quote! { __fields.map_value(#field_name, #value); }
+        }
+        FieldMode::KeyedBy(_) => {
+            let key = key_access.expect("keyed_by is available only for named fields");
+            quote! { __fields.keyed_value(#field_name, #key, #value); }
         }
         FieldMode::Json => quote! { __fields.json_text_value(#field_name, #value); },
         FieldMode::Skip => quote! { __fields.skipped(#field_name, || #value); },

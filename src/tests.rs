@@ -61,6 +61,8 @@ fn field_attributes_parse_every_supported_mode() {
             nested: String,
             #[redact(map)]
             map: String,
+            #[redact(keyed_by = unmarked)]
+            keyed: String,
             #[redact(json)]
             json: String,
             #[redact(skip)]
@@ -78,20 +80,26 @@ fn field_attributes_parse_every_supported_mode() {
         .iter()
         .map(|field| {
             let name = field.ident.as_ref().expect("named field");
-            let attributes =
-                FieldAttributes::parse(field, &input.ident, &name.to_string()).expect("supported field mode parses");
+            let attributes = FieldAttributes::parse(field, &input.ident, &name.to_string())
+                .expect("supported field mode parses");
             match attributes.mode() {
                 FieldMode::Unmarked => "unmarked",
                 FieldMode::Level(_) => "level",
                 FieldMode::Nested => "nested",
                 FieldMode::Map => "map",
+                FieldMode::KeyedBy(_) => "keyed_by",
                 FieldMode::Json => "json",
                 FieldMode::Skip => "skip",
             }
         })
         .collect::<Vec<_>>();
 
-    assert_eq!(modes, ["unmarked", "level", "nested", "map", "json", "skip"]);
+    assert_eq!(
+        modes,
+        [
+            "unmarked", "level", "nested", "map", "keyed_by", "json", "skip"
+        ]
+    );
 }
 
 #[test]
@@ -166,9 +174,14 @@ fn expansion_generates_only_the_requested_public_contracts() {
         }
     };
 
-    let rendered = expand::expand(&input).expect("valid input expands").to_string();
+    let rendered = expand::expand(&input)
+        .expect("valid input expands")
+        .to_string();
     for expected in ["Redact", "Debug", "Display", "Serialize", "RedactSerialize"] {
-        assert!(rendered.contains(expected), "missing {expected}: {rendered}");
+        assert!(
+            rendered.contains(expected),
+            "missing {expected}: {rendered}"
+        );
     }
     for removed in ["RedactMut", "redacted_with", "expand_with_options"] {
         assert!(

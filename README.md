@@ -59,6 +59,7 @@ redaction boundary.
 | `#[redact(skip)]` | Omit the field from the redacted output. |
 | `#[redact(nested)]` | Delegate to the nested value's `Redact` implementation. |
 | `#[redact(map)]` | Apply key-aware policy to supported text-keyed maps. |
+| `#[redact(keyed_by = key)]` | Classify this field by a sibling text key, using the same policy semantics as one map entry. |
 | `#[redact(json)]` | Apply recursive JSON-key redaction to supported JSON text values. |
 
 `#[redact(plain)]`, `#[redact(no_mut)]`, and `#[redact(require_explicit)]` are
@@ -66,6 +67,12 @@ not part of the current contract. The macro supports named, tuple, and unit
 structs and enum variants. `#[redact(debug)]`, `#[redact(display)]`, and
 `#[redact(serde)]` are opt-in container attributes; Serde support requires the
 runtime `serde` feature and a direct `serde` dependency.
+
+`keyed_by` is available only on named fields. The referenced sibling key must
+implement `AsRef<str>`, while the value uses the same recursive leaf capability
+as `level`. Standard policies pass unknown keys through; configure sensitive
+keys explicitly or use a stricter policy when unknown payload keys must be
+masked.
 
 The generated code resolves a direct `qubit-redact` dependency, including a
 Cargo-renamed dependency. The runtime trait is intentionally small:

@@ -23,7 +23,7 @@ help: the following other types implement trait `RedactMapValue`
   | borrowed_map_key!(Cow<'a, str>);
   | ------------------------------- in this macro invocation
 note: required by a bound in `RedactionFields::<'writer, 'session>::map_value`
- --> $QUBIT_REDACT/src/domain/redaction_writer.rs
+ --> $QUBIT_REDACT/src/domain/redaction_fields.rs
   |
   |     pub fn map_value<T>(&mut self, name: &str, value: &T) -> &mut Self
   |            --------- required by a bound in this associated function

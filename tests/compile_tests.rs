@@ -26,6 +26,7 @@ fn test_pass_fixtures() {
     tests.pass("tests/fixtures/pass/disabled_fields.rs");
     tests.pass("tests/fixtures/pass/serde_wire_shape.rs");
     tests.pass("tests/fixtures/pass/generic_grouped_bounds.rs");
+    tests.pass("tests/fixtures/pass/keyed_by.rs");
     #[cfg(feature = "test-json")]
     tests.pass("tests/fixtures/pass/json_string_variants.rs");
 }
@@ -51,6 +52,10 @@ fn test_compile_fail_fixtures() {
     tests.compile_fail("tests/fixtures/fail/level_struct.rs");
     tests.compile_fail("tests/fixtures/fail/sensitive_serde_adapter.rs");
     tests.compile_fail("tests/fixtures/fail/map_wrong_key.rs");
+    tests.compile_fail("tests/fixtures/fail/keyed_by_missing.rs");
+    tests.compile_fail("tests/fixtures/fail/keyed_by_self.rs");
+    tests.compile_fail("tests/fixtures/fail/keyed_by_tuple.rs");
+    tests.compile_fail("tests/fixtures/fail/keyed_by_wrong_key.rs");
     tests.compile_fail("tests/fixtures/fail/nested_without_redact_serialize.rs");
     tests.compile_fail("tests/fixtures/fail/union.rs");
     tests.compile_fail("tests/fixtures/fail/unknown_attribute.rs");

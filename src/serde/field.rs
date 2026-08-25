@@ -18,6 +18,14 @@ use syn::spanned::Spanned;
 
 use crate::attributes::SerdeAttributes;
 use crate::model::FieldMode;
+/// Source expressions used by one serialized field carrier.
+pub(super) struct FieldAccess {
+    /// Expression accessing the unredacted field value.
+    pub(super) raw: TokenStream,
+    /// Expression accessing the sibling key for keyed fields.
+    pub(super) key_raw: Option<TokenStream>,
+}
+
 /// Returns whether a field is omitted by redaction or Serde controls.
 ///
 /// # Parameters
@@ -72,7 +80,7 @@ pub(super) fn serialization_condition(
 /// * `mode` - Validated redaction mode.
 /// * `runtime` - Resolved path to the runtime crate.
 /// * `serialize_with` - Optional adapter used by an unmarked field.
-/// * `raw` - Expression accessing the unredacted field value.
+/// * `access` - Expressions accessing the value and optional sibling key.
 ///
 /// # Returns
 ///
@@ -84,31 +92,51 @@ pub(super) fn serialized_carrier(
     mode: &FieldMode,
     runtime: &Path,
     serialize_with: Option<&Path>,
-    raw: TokenStream,
+    access: FieldAccess,
 ) -> TokenStream {
     match mode {
         FieldMode::Unmarked | FieldMode::Skip => match serialize_with {
             Some(_) => {
                 let helper = adapter_helper_name(type_name, field, context);
+                let raw = access.raw;
                 quote_spanned!(field.span()=> #helper(#raw))
             }
-            None => raw,
+            None => access.raw,
         },
         FieldMode::Level(sensitivity) => {
             let level = sensitivity.runtime_tokens(runtime);
+            let raw = access.raw;
             quote_spanned! {field.span()=>
                 #runtime::domain::internal::RedactedLevelSerializeRef::new(#raw, policy, #level)
             }
         }
-        FieldMode::Nested => quote_spanned!(field.span()=>
-            #runtime::domain::internal::RedactedSerializeRef::new(#raw, policy)
-        ),
-        FieldMode::Map => quote_spanned!(field.span()=>
-            #runtime::domain::internal::RedactedMapSerializeRef::new(#raw, policy)
-        ),
-        FieldMode::Json => quote_spanned!(field.span()=>
-            #runtime::domain::internal::RedactedJsonSerializeRef::new(#raw, policy)
-        ),
+        FieldMode::Nested => {
+            let raw = access.raw;
+            quote_spanned!(field.span()=>
+                #runtime::domain::internal::RedactedSerializeRef::new(#raw, policy)
+            )
+        }
+        FieldMode::Map => {
+            let raw = access.raw;
+            quote_spanned!(field.span()=>
+                #runtime::domain::internal::RedactedMapSerializeRef::new(#raw, policy)
+            )
+        }
+        FieldMode::KeyedBy(_) => {
+            let raw = access.raw;
+            let key = access
+                .key_raw
+                .expect("keyed_by is available only for named fields");
+            quote_spanned!(field.span()=>
+                #runtime::domain::internal::RedactedKeyedSerializeRef::new(#raw, #key, policy)
+            )
+        }
+        FieldMode::Json => {
+            let raw = access.raw;
+            quote_spanned!(field.span()=>
+                #runtime::domain::internal::RedactedJsonSerializeRef::new(#raw, policy)
+            )
+        }
     }
 }
 
@@ -154,11 +182,16 @@ pub(super) fn raw_identifier(identifier: &Ident) -> String {
 ///
 /// A field name optionally prefixed by its owning variant.
 #[inline]
-pub(super) fn field_context(variant_name: Option<&Ident>, variant_index: Option<u32>, field_name: &str) -> String {
+pub(super) fn field_context(
+    variant_name: Option<&Ident>,
+    variant_index: Option<u32>,
+    field_name: &str,
+) -> String {
     variant_name.map_or_else(
         || field_name.to_owned(),
         |variant| {
-            let index = variant_index.expect("enum variant field contexts require a declaration index");
+            let index =
+                variant_index.expect("enum variant field contexts require a declaration index");
             format!("{variant}_{index}_{field_name}")
         },
     )

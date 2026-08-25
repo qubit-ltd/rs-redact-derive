@@ -57,6 +57,7 @@ assert_eq!(login.password, "raw-password");
 | `skip` | 省略字段。 |
 | `nested` | 委托给嵌套值的 `Redact` 实现。 |
 | `map` | 对支持的文本 key Map 按 key 和策略处理。 |
+| `keyed_by = key` | 用兄弟文本 key 对当前字段分类，语义等同一条 Map entry。 |
 | `json` | 对支持的 JSON 文本递归处理。 |
 
 已移除的 `plain`、`no_mut` 和 `require_explicit` 属性会被拒绝。只有在普通
@@ -65,9 +66,12 @@ variant 的这些形态。
 
 字段 capability 会在编译期检查。`level` 可递归处理 `Option`、`Vec`、数组和 tuple 中受
 支持的标量叶子，保持容器形状并逐叶掩码；`nested` 支持叶子实现 `Redact` 的 `Option` 和
-`Vec`；`map` 要求文本 key，并按每个 key 的策略递归处理 value 的标量叶子；`json`
-支持 `String`、`str`、`&str`、`Cow<str>` 及其受支持的可选形态，非法 JSON 会
-fail-closed。启用模式下 `skip` 不访问字段，禁用模式下恢复原字段。
+`Vec`；`map` 要求文本 key，并按每个 key 的策略递归处理 value 的标量叶子；`keyed_by`
+仅可用于具名字段，被引用的兄弟 key 必须实现 `AsRef<str>`，value 使用与 `level` 相同的
+递归标量 capability。standard policy 会放行未知 keyed value；如果未知 payload key 也必须
+掩码，应显式配置敏感 key 或使用更严格的策略。`json` 支持 `String`、`str`、`&str`、
+`Cow<str>` 及其受支持的可选形态，非法 JSON 会 fail-closed。启用模式下 `skip` 不访问字段，
+禁用模式下恢复原字段。
 
 ## 格式化与 Serde
 

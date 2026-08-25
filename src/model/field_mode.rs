@@ -7,6 +7,8 @@
 // =============================================================================
 //! Unique formatting mode selected for one derived field.
 
+use syn::Ident;
+
 use super::Sensitivity;
 /// Formatting behavior generated for one named field.
 #[must_use]
@@ -21,6 +23,8 @@ pub(crate) enum FieldMode {
     Nested,
     /// Classifies string map values by their runtime keys and active policy.
     Map,
+    /// Classifies a field value by a sibling text key and active policy.
+    KeyedBy(Ident),
     /// Redacts JSON text stored in a string field.
     Json,
 }

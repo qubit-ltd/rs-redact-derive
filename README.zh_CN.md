@@ -57,12 +57,17 @@ assert!(!output.text().as_str().contains("never-render"));
 | `#[redact(skip)]` | 从脱敏输出中省略。 |
 | `#[redact(nested)]` | 委托给嵌套值的 `Redact` 实现。 |
 | `#[redact(map)]` | 对支持的文本 key Map 按 key 和策略处理。 |
+| `#[redact(keyed_by = key)]` | 用兄弟文本 key 对当前字段分类，语义等同一条 Map entry。 |
 | `#[redact(json)]` | 对支持的 JSON 文本按 JSON key 递归处理。 |
 
 `#[redact(plain)]`、`#[redact(no_mut)]` 和 `#[redact(require_explicit)]` 不属于当前契约。
 宏支持具名、tuple、unit struct，以及 enum 的这些 variant 形态。容器属性
 `#[redact(debug)]`、`#[redact(display)]` 和 `#[redact(serde)]` 都必须显式启用；Serde
 支持还需要运行时 `serde` feature 和直接声明的 `serde` 依赖。
+
+`keyed_by` 仅可用于具名字段。被引用的兄弟 key 必须实现 `AsRef<str>`，value 使用与
+`level` 相同的递归叶子 capability。standard policy 会放行未知 key；如果未知 payload
+key 也必须掩码，应显式配置敏感 key 或使用更严格的策略。
 
 生成代码会解析直接声明的 `qubit-redact` 依赖，也支持 Cargo 重命名。运行时 trait 保持最小化：
 

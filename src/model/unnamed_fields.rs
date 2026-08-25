@@ -7,11 +7,13 @@
 // =============================================================================
 //! Tuple-field attribute parsing shared by structs and enum variants.
 
+use syn::Error;
 use syn::FieldsUnnamed;
 use syn::Ident;
 use syn::Index;
 use syn::Result;
 
+use super::FieldMode;
 use super::UnnamedField;
 use crate::attributes::FieldAttributes;
 use crate::attributes::SerdeAttributes;
@@ -47,8 +49,23 @@ pub(crate) fn parse<'a>(
         .map(|(position, field)| {
             let field_name = position.to_string();
             let attributes = FieldAttributes::parse(field, type_name, &field_name)?;
-            let serde_attributes = SerdeAttributes::parse(field, type_name, &field_name, serde_enabled)?;
-            serde_attributes.validate_redaction_mode(field, type_name, &field_name, attributes.mode())?;
+            if matches!(attributes.mode(), FieldMode::KeyedBy(_)) {
+                return Err(Error::new_spanned(
+                    field,
+                    format!(
+                        "Redact derive for `{type_name}` tuple field `{field_name}` cannot use \
+                         `keyed_by`; use it only on named fields with a sibling key",
+                    ),
+                ));
+            }
+            let serde_attributes =
+                SerdeAttributes::parse(field, type_name, &field_name, serde_enabled)?;
+            serde_attributes.validate_redaction_mode(
+                field,
+                type_name,
+                &field_name,
+                attributes.mode(),
+            )?;
             Ok(UnnamedField::new(
                 field,
                 Index::from(position),
