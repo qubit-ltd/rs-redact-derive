@@ -63,8 +63,12 @@ the single `Redact::write_redacted` method; there is no mutable redaction trait.
 | `json` | Recursively redact supported JSON text values. |
 
 The removed `plain`, `no_mut`, and `require_explicit` attributes are rejected.
-Use an unmarked field only when ordinary `Debug` output has been deliberately
-reviewed. The macro supports named, tuple, and unit structs and enum variants.
+Unmarked pass-through is intentional: sensitivity belongs to the downstream
+business domain and cannot be inferred reliably from a field name or Rust type.
+Ordinary fields are the large majority, so explicit "not sensitive" attributes
+would create noise rather than classification knowledge. Downstream types must
+annotate sensitive fields and review model changes. The macro supports named,
+tuple, and unit structs and enum variants.
 
 Capabilities are checked at compile time. `level` accepts supported scalar
 leaves recursively through `Option`, `Vec`, arrays, and tuples, preserving the
@@ -166,7 +170,8 @@ summary across the batch.
 
 ## Enabled and disabled output
 
-Global disablement is a startup boundary and intentionally restores raw values:
+Global disablement intentionally restores raw values as a process-wide
+debugging escape hatch:
 
 ```rust
 use qubit_redact::{RedactionPolicy, Redactor};
@@ -181,6 +186,13 @@ Enabled output remains confidentiality-safe even when its summary is
 `Truncated` or `Exhausted`. Check summaries for completeness, provenance, or
 auditing—not to decide whether enabled text may contain a secret. Treat an
 inconclusive inspection as sensitive when it drives a security decision.
+
+The framework executes the selected application-default policy; downstream
+code owns authorization, environment, timing, and any misuse of disabled mode.
+Replacing the default affects future snapshots only. Existing redactors,
+composers, and batches retain the immutable policy snapshot they already own.
+Generated `Debug` and `Display` output does not force callers to handle
+incompleteness reasons that formatting cannot act on.
 
 ## Safety and review checklist
 

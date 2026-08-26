@@ -46,9 +46,13 @@ assert!(!output.text().as_str().contains("raw-password"));
 assert!(!output.text().as_str().contains("never-render"));
 ```
 
-Unmarked fields use ordinary `Debug` formatting. They are not inferred to be
-sensitive and are not recursively traversed; mark every field that crosses the
-redaction boundary.
+Unmarked fields intentionally use ordinary `Debug` formatting. Whether a field
+is sensitive is downstream business-domain knowledge that a derive macro cannot
+reliably infer from its name or Rust type. Because ordinary fields are the vast
+majority, requiring an explicit "not sensitive" attribute on every one would
+create annotation noise without improving classification. Downstream types must
+explicitly annotate sensitive fields and review new or changed fields. The
+runtime's strict policy and inspection do not override this derive decision.
 
 ## Field modes
 
@@ -88,8 +92,14 @@ pub trait Redact {
 Redaction protects only the boundary that uses `Redactor`, generated formatting,
 or generated serialization. It does not erase the original value and cannot
 protect unrelated logs or serialization paths. `skip` omits output but retains
-the source field in memory. Review every unmarked field before adding it to a
-redacted model.
+the source field in memory. An unmarked field's pass-through behavior is an
+intentional responsibility boundary, not a missing framework check.
+
+Generated `Debug` and `Display` implementations write the confidentiality-safe
+text produced by the enabled runtime policy even when a resource limit makes
+the diagnostic incomplete. They do not force formatting callers to interpret a
+completion reason that they cannot act on. Program logic that needs completeness
+must call the runtime API and inspect its summary explicitly.
 
 For parsed JSON that must remain borrowed and unchanged, use the runtime API
 `Redactor::redact_json_value(&serde_json::Value)` or

@@ -60,9 +60,10 @@ assert_eq!(login.password, "raw-password");
 | `keyed_by = key` | 用兄弟文本 key 对当前字段分类，语义等同一条 Map entry。 |
 | `json` | 对支持的 JSON 文本递归处理。 |
 
-已移除的 `plain`、`no_mut` 和 `require_explicit` 属性会被拒绝。只有在普通
-`Debug` 输出经过明确审查时才保留未标注字段。宏支持具名、tuple、unit struct 和 enum
-variant 的这些形态。
+已移除的 `plain`、`no_mut` 和 `require_explicit` 属性会被拒绝。未标注直通是有意设计：
+敏感性属于下游业务领域，无法从字段名或 Rust 类型中可靠推断。普通字段占绝大多数，要求
+逐一声明“不敏感”只会制造噪声，不会增加分类知识。下游类型必须标注敏感字段，并在模型变化
+时重新审查。宏支持具名、tuple、unit struct 和 enum variant 的这些形态。
 
 字段 capability 会在编译期检查。`level` 可递归处理 `Option`、`Vec`、数组和 tuple 中受
 支持的标量叶子，保持容器形状并逐叶掩码；`nested` 支持叶子实现 `Redact` 的 `Option` 和
@@ -154,7 +155,7 @@ let _ = inspection;
 
 ## 启用与禁用输出
 
-全局禁用属于启动边界，会有意恢复原值：
+全局禁用会有意恢复原值，是进程级调试逃生口：
 
 ```rust
 use qubit_redact::{RedactionPolicy, Redactor};
@@ -168,6 +169,11 @@ let redactor = Redactor::new(policy);
 策略启用时，即使摘要为 `Truncated` 或 `Exhausted`，文本也应保持保密安全。只有完整性、
 原因追踪和审计场景需要检查 summary，不要用它判断启用模式的文本是否可能包含秘密。
 若 inspection 用于安全决策，分类不完整时应按敏感处理。
+
+框架只负责执行所选 application-default policy；禁用模式的授权、环境、时机和误用后果由
+下游负责。替换默认值只影响之后取得的快照，既有 `Redactor`、composer 和 batch 继续持有
+原有不可变策略。生成的 `Debug` 和 `Display` 不强制调用方处理格式化过程无法采取行动的
+不完整原因。
 
 ## 安全与审查清单
 
