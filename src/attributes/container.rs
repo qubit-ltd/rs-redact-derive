@@ -108,11 +108,7 @@ impl ContainerAttributes {
                 Ok(())
             })?;
         }
-        Ok(Self {
-            debug,
-            display,
-            serde,
-        })
+        Ok(Self { debug, display, serde })
     }
 
     /// Returns whether this struct requested a redacted `Debug` impl.

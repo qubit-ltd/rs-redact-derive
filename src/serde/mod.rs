@@ -10,6 +10,7 @@
 mod entry;
 mod r#enum;
 mod field;
+mod field_access;
 mod internal;
 mod naming;
 mod r#struct;

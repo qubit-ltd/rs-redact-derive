@@ -22,8 +22,15 @@ mod tests;
 
 /// Derives the borrowing `qubit_redact::Redact` implementation.
 ///
-/// Fields without an attribute use ordinary `Debug` formatting. Supported
-/// field modes are:
+/// Fields without an attribute intentionally use ordinary `Debug` formatting.
+/// Sensitivity is downstream business-domain knowledge that the macro cannot
+/// infer reliably from a field name or Rust type. Ordinary fields are the large
+/// majority, so an explicit "not sensitive" attribute on every field would add
+/// noise without adding knowledge. Downstream types must explicitly annotate
+/// sensitive fields and review that classification when their model changes;
+/// strict policy and inspection deliberately do not override this decision.
+///
+/// Supported field modes are:
 ///
 /// - `#[redact(level = "low" | "medium" | "high" | "secret")]` masks every
 ///   supported scalar leaf while preserving recursive container shape;
@@ -35,7 +42,10 @@ mod tests;
 /// Container options `#[redact(debug)]` and `#[redact(display)]` generate
 /// policy-aware formatting implementations. `#[redact(serde)]` generates a
 /// structured `serde::Serialize` implementation and requires direct runtime
-/// and Serde dependencies.
+/// and Serde dependencies. Generated formatting writes enabled-policy text
+/// directly for every completion state because it remains confidentiality-safe;
+/// callers that require completeness must use the runtime API and inspect its
+/// summary instead.
 ///
 /// # Examples
 ///

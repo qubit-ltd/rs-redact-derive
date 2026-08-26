@@ -18,13 +18,7 @@ use syn::spanned::Spanned;
 
 use crate::attributes::SerdeAttributes;
 use crate::model::FieldMode;
-/// Source expressions used by one serialized field carrier.
-pub(super) struct FieldAccess {
-    /// Expression accessing the unredacted field value.
-    pub(super) raw: TokenStream,
-    /// Expression accessing the sibling key for keyed fields.
-    pub(super) key_raw: Option<TokenStream>,
-}
+use crate::serde::field_access::FieldAccess;
 
 /// Returns whether a field is omitted by redaction or Serde controls.
 ///
@@ -124,9 +118,7 @@ pub(super) fn serialized_carrier(
         }
         FieldMode::KeyedBy(_) => {
             let raw = access.raw;
-            let key = access
-                .key_raw
-                .expect("keyed_by is available only for named fields");
+            let key = access.key_raw.expect("keyed_by is available only for named fields");
             quote_spanned!(field.span()=>
                 #runtime::domain::internal::RedactedKeyedSerializeRef::new(#raw, #key, policy)
             )
@@ -182,16 +174,11 @@ pub(super) fn raw_identifier(identifier: &Ident) -> String {
 ///
 /// A field name optionally prefixed by its owning variant.
 #[inline]
-pub(super) fn field_context(
-    variant_name: Option<&Ident>,
-    variant_index: Option<u32>,
-    field_name: &str,
-) -> String {
+pub(super) fn field_context(variant_name: Option<&Ident>, variant_index: Option<u32>, field_name: &str) -> String {
     variant_name.map_or_else(
         || field_name.to_owned(),
         |variant| {
-            let index =
-                variant_index.expect("enum variant field contexts require a declaration index");
+            let index = variant_index.expect("enum variant field contexts require a declaration index");
             format!("{variant}_{index}_{field_name}")
         },
     )

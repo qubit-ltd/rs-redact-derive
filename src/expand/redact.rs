@@ -75,15 +75,8 @@ fn expand_with_container_attributes(
         .serde_enabled()
         .then(|| resolve_serde_path(input))
         .transpose()?;
-    let serde_container_attributes =
-        SerdeContainerAttributes::parse(input, container_attributes.serde_enabled())?;
-    let serde_impl = serde::expand(
-        input,
-        runtime,
-        serde.as_ref(),
-        &serde_container_attributes,
-        &model,
-    )?;
+    let serde_container_attributes = SerdeContainerAttributes::parse(input, container_attributes.serde_enabled())?;
+    let serde_impl = serde::expand(input, runtime, serde.as_ref(), &serde_container_attributes, &model)?;
     let mut redaction_generics = input.generics.clone();
     assertions::add_redact_bounds(&mut redaction_generics, &model, runtime);
     let write_body = match &model {

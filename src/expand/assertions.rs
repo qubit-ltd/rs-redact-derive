@@ -46,11 +46,7 @@ use crate::model::FieldsData;
 /// * `generics` - Input generics plus bounds required by the redaction impl.
 /// * `model` - Parsed fields and their selected redaction modes.
 /// * `runtime` - Resolved path to the runtime crate.
-pub(crate) fn add_redact_bounds(
-    generics: &mut Generics,
-    model: &ContainerData<'_>,
-    runtime: &Path,
-) {
+pub(crate) fn add_redact_bounds(generics: &mut Generics, model: &ContainerData<'_>, runtime: &Path) {
     for_each_field(model, &mut |field, mode, _serialize_with| match mode {
         FieldMode::Unmarked => {
             add_trait_bound(generics, field, quote!(::core::fmt::Debug));
@@ -100,21 +96,9 @@ pub(crate) fn add_serialization_bounds(
             );
             add_trait_bound(generics, field, quote!(#serde::Serialize));
         }
-        FieldMode::Nested => add_trait_bound(
-            generics,
-            field,
-            quote!(#runtime::domain::internal::RedactSerialize),
-        ),
-        FieldMode::Map => add_trait_bound(
-            generics,
-            field,
-            quote!(#runtime::domain::internal::RedactMapSerialize),
-        ),
-        FieldMode::Json => add_trait_bound(
-            generics,
-            field,
-            quote!(#runtime::domain::internal::RedactJsonSerialize),
-        ),
+        FieldMode::Nested => add_trait_bound(generics, field, quote!(#runtime::domain::internal::RedactSerialize)),
+        FieldMode::Map => add_trait_bound(generics, field, quote!(#runtime::domain::internal::RedactMapSerialize)),
+        FieldMode::Json => add_trait_bound(generics, field, quote!(#runtime::domain::internal::RedactJsonSerialize)),
         FieldMode::Skip if serialize_with.is_none() => {
             add_trait_bound(generics, field, quote!(#serde::Serialize));
         }
@@ -125,10 +109,7 @@ pub(crate) fn add_serialization_bounds(
 
 /// Visits every parsed field without exposing the container representation to
 /// each bound-inference caller.
-fn for_each_field(
-    model: &ContainerData<'_>,
-    callback: &mut impl FnMut(&Field, &FieldMode, Option<&Path>),
-) {
+fn for_each_field(model: &ContainerData<'_>, callback: &mut impl FnMut(&Field, &FieldMode, Option<&Path>)) {
     match model {
         ContainerData::Struct(fields) => for_each_fields(fields, callback),
         ContainerData::Enum(variants) => {
@@ -140,10 +121,7 @@ fn for_each_field(
 }
 
 /// Visits one parsed field collection.
-fn for_each_fields(
-    fields: &FieldsData<'_>,
-    callback: &mut impl FnMut(&Field, &FieldMode, Option<&Path>),
-) {
+fn for_each_fields(fields: &FieldsData<'_>, callback: &mut impl FnMut(&Field, &FieldMode, Option<&Path>)) {
     match fields {
         FieldsData::Named(fields) => {
             for field in fields {
@@ -305,11 +283,7 @@ fn parameter_names_in(tokens: &impl ToTokens, candidates: &BTreeSet<String>) -> 
 }
 
 /// Recursively collects candidate generic names from token groups.
-fn collect_parameter_names(
-    tokens: TokenStream,
-    candidates: &BTreeSet<String>,
-    names: &mut BTreeSet<String>,
-) {
+fn collect_parameter_names(tokens: TokenStream, candidates: &BTreeSet<String>, names: &mut BTreeSet<String>) {
     for token in tokens {
         match token {
             TokenTree::Ident(identifier) => {
