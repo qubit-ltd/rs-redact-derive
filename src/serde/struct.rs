@@ -47,6 +47,9 @@ pub(super) fn struct_body(
     container_attributes: &SerdeContainerAttributes,
 ) -> TokenStream {
     match fields {
+        FieldsData::Named(fields) if container_attributes.transparent() => {
+            transparent_named_struct_body(type_name, &fields[0], runtime, serde, container_attributes)
+        }
         FieldsData::Named(fields) => named_struct_body(type_name, fields, runtime, serde, container_attributes),
         FieldsData::Unnamed(fields) if fields.len() == 1 => {
             newtype_struct_body(type_name, &fields[0], runtime, serde, container_attributes)
@@ -60,6 +63,55 @@ pub(super) fn struct_body(
                     #serialized_name,
                 )
             }
+        }
+    }
+}
+
+fn transparent_named_struct_body(
+    type_name: &Ident,
+    parsed: &NamedField<'_>,
+    runtime: &Path,
+    serde: &Path,
+    container_attributes: &SerdeContainerAttributes,
+) -> TokenStream {
+    let serialized_name = container_attributes.name();
+    if field_is_skipped(parsed.attributes().mode(), parsed.serde_attributes()) {
+        return quote! {
+            #serde::Serializer::serialize_unit_struct(serializer, #serialized_name)
+        };
+    }
+    let field = parsed.field();
+    let identifier = parsed.identifier();
+    let raw_name = raw_identifier(identifier);
+    let raw = quote_spanned!(field.span()=> &self.#identifier);
+    let key_raw = match parsed.attributes().mode() {
+        FieldMode::KeyedBy(key) => Some(quote_spanned!(field.span()=> &self.#key)),
+        _ => None,
+    };
+    let context = field_context(None, None, &raw_name);
+    let value = serialized_carrier(
+        type_name,
+        field,
+        &context,
+        parsed.attributes().mode(),
+        runtime,
+        parsed.serde_attributes().serialize_with(),
+        FieldAccess {
+            raw: raw.clone(),
+            key_raw,
+        },
+    );
+    let condition = serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
+    quote! {
+        if #condition {
+            let __qubit_redact_serialized_0 = #value;
+            #serde::Serializer::serialize_newtype_struct(
+                serializer,
+                #serialized_name,
+                &__qubit_redact_serialized_0,
+            )
+        } else {
+            #serde::Serializer::serialize_unit_struct(serializer, #serialized_name)
         }
     }
 }

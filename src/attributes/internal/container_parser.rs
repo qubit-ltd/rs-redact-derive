@@ -50,6 +50,8 @@ pub(crate) struct SerdeContainerAttributeParser<'input> {
     content: Option<LitStr>,
     /// Optional bare untagged attribute path.
     untagged: Option<Path>,
+    /// Whether a single-field struct uses its field representation directly.
+    transparent: bool,
 }
 
 impl<'input> SerdeContainerAttributeParser<'input> {
@@ -103,6 +105,7 @@ impl<'input> SerdeContainerAttributeParser<'input> {
             tag: None,
             content: None,
             untagged: None,
+            transparent: false,
         }
     }
 
@@ -176,6 +179,21 @@ impl<'input> SerdeContainerAttributeParser<'input> {
             self.parse_content(meta)
         } else if meta.path.is_ident("untagged") {
             self.parse_untagged(meta)
+        } else if meta.path.is_ident("crate") {
+            let _: LitStr = meta.value()?.parse()?;
+            Ok(())
+        } else if meta.path.is_ident("transparent") {
+            if meta.input.peek(Token![=]) || meta.input.peek(Paren) {
+                return Err(meta.error(format!(
+                    "Redact serde for `{}` requires bare `transparent`",
+                    self.input.ident,
+                )));
+            }
+            if self.transparent {
+                return Err(meta.error(format!("Redact serde for `{}` repeats `transparent`", self.input.ident,)));
+            }
+            self.transparent = true;
+            Ok(())
         } else if meta.path.is_ident("default") {
             parse_deserialize_only_default(&meta, &self.input.ident)
         } else if meta.path.is_ident("deny_unknown_fields") {
@@ -279,6 +297,7 @@ impl<'input> SerdeContainerAttributeParser<'input> {
             self.tag,
             self.content,
             self.untagged,
+            self.transparent,
         )
     }
 

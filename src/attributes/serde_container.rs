@@ -8,8 +8,10 @@
 //! Whitelisted Serde container attributes for redacted serialization.
 // qubit-style: allow type-file-name
 
+use syn::Data;
 use syn::DeriveInput;
 use syn::Error;
+use syn::Fields;
 use syn::LitStr;
 use syn::Path;
 use syn::Result;
@@ -29,6 +31,8 @@ pub(crate) struct SerdeContainerAttributes {
     rename_all_fields: Option<SerdeRenameRule>,
     /// Validated enum representation.
     representation: SerdeEnumRepresentation,
+    /// Whether a single-field struct serializes as its field.
+    transparent: bool,
 }
 
 impl SerdeContainerAttributes {
@@ -72,6 +76,7 @@ impl SerdeContainerAttributes {
     ///
     /// Returns the targeted representation validation error for incompatible
     /// tag, content, or untagged controls.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn from_parts(
         input: &DeriveInput,
         name: Option<String>,
@@ -80,13 +85,31 @@ impl SerdeContainerAttributes {
         tag: Option<LitStr>,
         content: Option<LitStr>,
         untagged: Option<Path>,
+        transparent: bool,
     ) -> Result<Self> {
+        if transparent {
+            let valid = matches!(&input.data, Data::Struct(data) if match &data.fields {
+                Fields::Named(fields) => fields.named.len() == 1,
+                Fields::Unnamed(fields) => fields.unnamed.len() == 1,
+                Fields::Unit => false,
+            });
+            if !valid {
+                return Err(Error::new_spanned(
+                    input,
+                    format!(
+                        "Redact serde for `{}` requires `transparent` on a single-field struct",
+                        input.ident
+                    ),
+                ));
+            }
+        }
         let representation = representation(input, tag, content, untagged)?;
         Ok(Self {
             name: name.unwrap_or_else(|| input.ident.to_string()),
             rename_all,
             rename_all_fields,
             representation,
+            transparent,
         })
     }
 
@@ -154,6 +177,11 @@ impl SerdeContainerAttributes {
     #[inline(always)]
     pub(crate) const fn representation(&self) -> &SerdeEnumRepresentation {
         &self.representation
+    }
+
+    /// Returns whether a single-field struct uses the field representation.
+    pub(crate) const fn transparent(&self) -> bool {
+        self.transparent
     }
 }
 

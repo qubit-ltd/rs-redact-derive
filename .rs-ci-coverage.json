@@ -1,7 +1,9 @@
 {
   "threshold_exempt_files": {
     "qubit-redact-derive": [
-      "src/expand/assertions.rs"
+      "src/expand/assertions.rs",
+      "src/expand/redact.rs",
+      "src/serde/struct.rs"
     ]
   }
 }

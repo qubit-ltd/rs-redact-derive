@@ -80,6 +80,9 @@ fn expand_with_container_attributes(
     let mut redaction_generics = input.generics.clone();
     assertions::add_redact_bounds(&mut redaction_generics, &model, runtime);
     let write_body = match &model {
+        ContainerData::Struct(fields) if container_attributes.transparent() => {
+            writer_transparent_struct_body(fields, runtime)
+        }
         ContainerData::Struct(fields) => writer_struct_body(&input.ident, fields, runtime),
         ContainerData::Enum(variants) => writer_enum_body(variants, runtime),
     };
@@ -99,6 +102,50 @@ fn expand_with_container_attributes(
         #format_impl
         #serde_impl
     })
+}
+
+/// Generates one classified field without a nominal struct wrapper.
+fn writer_transparent_struct_body(fields: &FieldsData<'_>, runtime: &Path) -> TokenStream {
+    let call = match fields {
+        FieldsData::Named(fields) => {
+            let field = fields.first().expect("transparent shape was validated");
+            let identifier = field.identifier();
+            let key_access = match field.attributes().mode() {
+                FieldMode::KeyedBy(key) => Some(quote!(&self.#key)),
+                _ => None,
+            };
+            let name = identifier.to_string();
+            writer_field_call(
+                field.field(),
+                &name,
+                &name,
+                field.attributes().mode(),
+                quote!(&self.#identifier),
+                key_access,
+                runtime,
+            )
+        }
+        FieldsData::Unnamed(fields) => {
+            let field = fields.first().expect("transparent shape was validated");
+            let index = field.index();
+            let name = index.index.to_string();
+            writer_field_call(
+                field.field(),
+                &name,
+                &name,
+                field.attributes().mode(),
+                quote!(&self.#index),
+                None,
+                runtime,
+            )
+        }
+        FieldsData::Unit => unreachable!("transparent unit structs are rejected"),
+    };
+    quote! {
+        writer.transparent(|__fields| {
+            #call
+        });
+    }
 }
 
 /// Generates a structured writer body for one struct.
@@ -223,7 +270,7 @@ fn writer_enum_body(variants: &[VariantData<'_>], runtime: &Path) -> TokenStream
                 }
             }
             FieldsData::Unit => {
-                quote! { Self::#variant_name => writer.record(stringify!(#variant_name), |_| {}), }
+                quote! { Self::#variant_name => writer.record(stringify!(#variant_name), |_| {}) }
             }
         }
     });
@@ -253,6 +300,20 @@ fn writer_field_call(
         FieldMode::Nested => quote! { __fields.nested(#field_name, #value); },
         FieldMode::Map => {
             quote! { __fields.map_value(#field_name, #value); }
+        }
+        FieldMode::MapLevels {
+            key,
+            value: value_level,
+        } => {
+            let key = key.as_ref().expect("map key level is required").runtime_tokens(runtime);
+            let value_level = value_level
+                .as_ref()
+                .map(|level| {
+                    let level = level.runtime_tokens(runtime);
+                    quote!(Some(#level))
+                })
+                .unwrap_or_else(|| quote!(None));
+            quote! { __fields.map_level_values(#field_name, #value, #key, #value_level); }
         }
         FieldMode::KeyedBy(_) => {
             let key = key_access.expect("keyed_by is available only for named fields");

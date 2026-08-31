@@ -58,6 +58,7 @@ pub(crate) fn add_redact_bounds(generics: &mut Generics, model: &ContainerData<'
             add_trait_bound(generics, field, quote!(#runtime::Redact));
         }
         FieldMode::Map => add_trait_bound(generics, field, quote!(#runtime::RedactMapValue)),
+        FieldMode::MapLevels { .. } => add_trait_bound(generics, field, quote!(#runtime::RedactMapKeyValue)),
         FieldMode::Skip | FieldMode::Json => {}
     });
 }
@@ -98,6 +99,11 @@ pub(crate) fn add_serialization_bounds(
         }
         FieldMode::Nested => add_trait_bound(generics, field, quote!(#runtime::domain::internal::RedactSerialize)),
         FieldMode::Map => add_trait_bound(generics, field, quote!(#runtime::domain::internal::RedactMapSerialize)),
+        FieldMode::MapLevels { .. } => add_trait_bound(
+            generics,
+            field,
+            quote!(#runtime::domain::internal::RedactMapKeySerialize),
+        ),
         FieldMode::Json => add_trait_bound(generics, field, quote!(#runtime::domain::internal::RedactJsonSerialize)),
         FieldMode::Skip if serialize_with.is_none() => {
             add_trait_bound(generics, field, quote!(#serde::Serialize));

@@ -33,7 +33,5 @@ fn test_serde_path_resolves_itself() {
         .expect("the isolated cargo check starts");
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    assert!(!output.status.success(), "{stderr}");
-    assert!(stderr.contains("does not support container `transparent`"), "{stderr}",);
-    assert!(!stderr.contains("unable to resolve serde; add `serde`"), "{stderr}",);
+    assert!(output.status.success(), "{stderr}");
 }

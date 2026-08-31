@@ -8,9 +8,11 @@
 //! Strict parsing boundary for container-level `redact` attributes.
 // qubit-style: allow type-file-name
 
+use syn::Data;
 use syn::DeriveInput;
 use syn::Error;
 use syn::Meta;
+use syn::Path;
 use syn::Result;
 use syn::Token;
 use syn::token::Paren;
@@ -24,6 +26,8 @@ pub(crate) struct ContainerAttributes {
     display: bool,
     /// Whether redacted serde integration was requested.
     serde: bool,
+    /// Whether one field should be written without a nominal wrapper.
+    transparent: bool,
 }
 
 impl ContainerAttributes {
@@ -45,6 +49,7 @@ impl ContainerAttributes {
         let mut debug = false;
         let mut display = false;
         let mut serde = false;
+        let mut transparent = false;
         for attribute in &input.attrs {
             if !attribute.path().is_ident("redact") {
                 continue;
@@ -69,12 +74,18 @@ impl ContainerAttributes {
                 ));
             }
             attribute.parse_nested_meta(|meta| {
+                if meta.path.is_ident("crate") {
+                    let _: Path = meta.value()?.parse()?;
+                    return Ok(());
+                }
                 let option = if meta.path.is_ident("debug") {
                     &mut debug
                 } else if meta.path.is_ident("display") {
                     &mut display
                 } else if meta.path.is_ident("serde") {
                     &mut serde
+                } else if meta.path.is_ident("transparent") {
+                    &mut transparent
                 } else {
                     return Err(meta.error(format!(
                         "Redact derive for `{}` has unknown container attribute; use \
@@ -108,7 +119,24 @@ impl ContainerAttributes {
                 Ok(())
             })?;
         }
-        Ok(Self { debug, display, serde })
+        if transparent {
+            let valid = matches!(&input.data, Data::Struct(data) if data.fields.iter().count() == 1);
+            if !valid {
+                return Err(Error::new_spanned(
+                    input,
+                    format!(
+                        "Redact derive for `{}` requires `transparent` on a single-field struct",
+                        input.ident
+                    ),
+                ));
+            }
+        }
+        Ok(Self {
+            debug,
+            display,
+            serde,
+            transparent,
+        })
     }
 
     /// Returns whether this struct requested a redacted `Debug` impl.
@@ -142,5 +170,11 @@ impl ContainerAttributes {
     #[inline(always)]
     pub(crate) const fn serde_enabled(&self) -> bool {
         self.serde
+    }
+
+    /// Returns whether redaction uses the sole field representation directly.
+    #[must_use]
+    pub(crate) const fn transparent(&self) -> bool {
+        self.transparent
     }
 }

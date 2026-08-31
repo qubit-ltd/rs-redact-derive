@@ -17,6 +17,7 @@ use syn::Path;
 use syn::Result;
 
 /// Validated sensitivity level used to generate a runtime variant path.
+#[derive(Clone, Copy)]
 #[must_use]
 pub(crate) struct Sensitivity {
     /// Runtime `Sensitivity` variant identifier.

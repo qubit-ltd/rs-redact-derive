@@ -23,6 +23,13 @@ pub(crate) enum FieldMode {
     Nested,
     /// Classifies string map values by their runtime keys and active policy.
     Map,
+    /// Masks map keys and, optionally, map values at fixed levels.
+    MapLevels {
+        /// Sensitivity applied to every map key.
+        key: Option<Sensitivity>,
+        /// Sensitivity applied to every map value.
+        value: Option<Sensitivity>,
+    },
     /// Classifies a field value by a sibling text key and active policy.
     KeyedBy(Ident),
     /// Redacts JSON text stored in a string field.

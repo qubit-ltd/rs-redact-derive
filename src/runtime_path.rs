@@ -10,10 +10,15 @@
 pub(crate) mod internal;
 
 use proc_macro_crate::crate_name;
+use quote::quote;
 use syn::DeriveInput;
+use syn::Meta;
 use syn::Path;
 use syn::Result;
+use syn::Token;
 use syn::parse_quote;
+use syn::parse2;
+use syn::punctuated::Punctuated;
 
 /// Resolves the runtime path visible from the derive call site.
 ///
@@ -23,7 +28,7 @@ use syn::parse_quote;
 ///
 /// # Returns
 ///
-/// `::qubit_redact` when deriving inside the runtime crate, or an absolute path
+/// `crate` when deriving inside the runtime crate, or an absolute path
 /// using the dependency's local name when invoked by a downstream crate.
 ///
 /// # Errors
@@ -32,10 +37,30 @@ use syn::parse_quote;
 /// expose the `qubit-redact` runtime dependency.
 #[inline(always)]
 pub(crate) fn resolve(input: &DeriveInput) -> Result<Path> {
+    for attribute in input
+        .attrs
+        .iter()
+        .filter(|attribute| attribute.path().is_ident("redact"))
+    {
+        if !matches!(attribute.meta, Meta::List(_)) {
+            continue;
+        }
+        let Ok(items) = attribute.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated) else {
+            continue;
+        };
+        for item in items {
+            if let Meta::NameValue(value) = item
+                && value.path.is_ident("crate")
+            {
+                let expression = value.value;
+                return parse2(quote!(#expression));
+            }
+        }
+    }
     internal::resolve(
         input,
         crate_name("qubit-redact"),
-        parse_quote!(::qubit_redact),
+        parse_quote!(crate),
         "unable to resolve the qubit-redact runtime crate",
     )
 }

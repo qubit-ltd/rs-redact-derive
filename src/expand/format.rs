@@ -9,7 +9,9 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::Data;
 use syn::DeriveInput;
+use syn::Fields;
 use syn::Generics;
 use syn::Path;
 
@@ -35,6 +37,33 @@ pub(crate) fn expand(
 ) -> TokenStream {
     let name = &input.ident;
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
+    let debug_body = if attributes.transparent() {
+        match &input.data {
+            Data::Struct(data) => match &data.fields {
+                Fields::Named(fields) => {
+                    let field = fields
+                        .named
+                        .first()
+                        .and_then(|field| field.ident.as_ref())
+                        .expect("validated transparent field");
+                    quote! {
+                        formatter.write_str(concat!(stringify!(#name), " { ", stringify!(#field), ": "))?;
+                        formatter.write_str(output.text().as_str())?;
+                        formatter.write_str(" }")
+                    }
+                }
+                Fields::Unnamed(_) => quote! {
+                    formatter.write_str(concat!(stringify!(#name), "("))?;
+                    formatter.write_str(output.text().as_str())?;
+                    formatter.write_str(")")
+                },
+                Fields::Unit => unreachable!("transparent unit structs are rejected"),
+            },
+            Data::Enum(_) | Data::Union(_) => unreachable!("transparent requires a struct"),
+        }
+    } else {
+        quote!(formatter.write_str(output.text().as_str()))
+    };
     let debug_impl = attributes.debug_enabled().then(|| {
         quote! {
             impl #impl_generics ::core::fmt::Debug for #name #type_generics #where_clause {
@@ -44,7 +73,7 @@ pub(crate) fn expand(
                     formatter: &mut ::core::fmt::Formatter<'_>,
                 ) -> ::core::fmt::Result {
                     let output = #runtime::Redactor::application_default().redact(self);
-                    formatter.write_str(output.text().as_str())
+                    #debug_body
                 }
             }
         }

@@ -76,6 +76,14 @@ impl FieldAttributes {
                 select_mode(&meta, type_name, field_name, &mut selected, mode)
             })?;
         }
+        if matches!(selected, Some(FieldMode::MapLevels { key: None, .. })) {
+            return Err(field_error(
+                field,
+                type_name,
+                field_name,
+                "`map_value_level` requires `map_key_level` in the same attribute",
+            ));
+        }
         let mode = selected.unwrap_or(FieldMode::Unmarked);
         Ok(Self { mode })
     }
@@ -132,6 +140,25 @@ fn parse_mode(meta: &ParseNestedMeta<'_>, type_name: &Ident, field_name: &str) -
              and the complete policy",
         )?;
         Ok(FieldMode::Map)
+    } else if meta.path.is_ident("map_key_level") || meta.path.is_ident("map_value_level") {
+        if !meta.input.peek(Token![=]) {
+            return Err(meta.error(format!(
+                "Redact derive for `{type_name}` field `{field_name}` requires a sensitivity string",
+            )));
+        }
+        let literal: LitStr = meta.value()?.parse()?;
+        let level = Sensitivity::parse(&literal, type_name, field_name)?;
+        Ok(if meta.path.is_ident("map_key_level") {
+            FieldMode::MapLevels {
+                key: Some(level),
+                value: None,
+            }
+        } else {
+            FieldMode::MapLevels {
+                key: None,
+                value: Some(level),
+            }
+        })
     } else if meta.path.is_ident("keyed_by") {
         if !meta.input.peek(Token![=]) {
             return Err(meta.error(format!(
@@ -204,6 +231,23 @@ fn select_mode(
     selected: &mut Option<FieldMode>,
     mode: FieldMode,
 ) -> Result<()> {
+    if let (
+        Some(FieldMode::MapLevels { key, value }),
+        FieldMode::MapLevels {
+            key: new_key,
+            value: new_value,
+        },
+    ) = (selected.as_mut(), &mode)
+    {
+        if (key.is_some() && new_key.is_some()) || (value.is_some() && new_value.is_some()) {
+            return Err(meta.error(format!(
+                "Redact derive for `{type_name}` field `{field_name}` repeats a map sensitivity",
+            )));
+        }
+        *key = key.or(*new_key);
+        *value = value.or(*new_value);
+        return Ok(());
+    }
     if selected.is_some() {
         return Err(meta.error(format!(
             "Redact derive for `{type_name}` field `{field_name}` has conflicting or \

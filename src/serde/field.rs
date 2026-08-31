@@ -116,6 +116,20 @@ pub(super) fn serialized_carrier(
                 #runtime::domain::internal::RedactedMapSerializeRef::new(#raw, policy)
             )
         }
+        FieldMode::MapLevels { key, value } => {
+            let key = key.as_ref().expect("map key level is required").runtime_tokens(runtime);
+            let value = value
+                .as_ref()
+                .map(|level| {
+                    let level = level.runtime_tokens(runtime);
+                    quote!(Some(#level))
+                })
+                .unwrap_or_else(|| quote!(None));
+            let raw = access.raw;
+            quote_spanned!(field.span()=>
+                #runtime::domain::internal::RedactedMapKeySerializeRef::new(#raw, policy, #key, #value)
+            )
+        }
         FieldMode::KeyedBy(_) => {
             let raw = access.raw;
             let key = access.key_raw.expect("keyed_by is available only for named fields");

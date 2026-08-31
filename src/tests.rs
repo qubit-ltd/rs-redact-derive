@@ -87,6 +87,7 @@ fn field_attributes_parse_every_supported_mode() {
                 FieldMode::Level(_) => "level",
                 FieldMode::Nested => "nested",
                 FieldMode::Map => "map",
+                FieldMode::MapLevels { .. } => "map_levels",
                 FieldMode::KeyedBy(_) => "keyed_by",
                 FieldMode::Json => "json",
                 FieldMode::Skip => "skip",
