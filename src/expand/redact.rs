@@ -75,8 +75,15 @@ fn expand_with_container_attributes(
         .serde_enabled()
         .then(|| resolve_serde_path(input))
         .transpose()?;
-    let serde_container_attributes = SerdeContainerAttributes::parse(input, container_attributes.serde_enabled())?;
-    let serde_impl = serde::expand(input, runtime, serde.as_ref(), &serde_container_attributes, &model)?;
+    let serde_container_attributes =
+        SerdeContainerAttributes::parse(input, container_attributes.serde_enabled())?;
+    let serde_impl = serde::expand(
+        input,
+        runtime,
+        serde.as_ref(),
+        &serde_container_attributes,
+        &model,
+    )?;
     let mut redaction_generics = input.generics.clone();
     assertions::add_redact_bounds(&mut redaction_generics, &model, runtime);
     let write_body = match &model {
@@ -305,7 +312,10 @@ fn writer_field_call(
             key,
             value: value_level,
         } => {
-            let key = key.as_ref().expect("map key level is required").runtime_tokens(runtime);
+            let key = key
+                .as_ref()
+                .expect("map key level is required")
+                .runtime_tokens(runtime);
             let value_level = value_level
                 .as_ref()
                 .map(|level| {

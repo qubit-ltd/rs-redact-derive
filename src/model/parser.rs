@@ -19,7 +19,11 @@ use super::named_fields;
 use super::unnamed_fields;
 use crate::attributes::SerdeVariantAttributes;
 
-pub(crate) fn parse<'a>(input: &'a DeriveInput, derive_name: &str, serde_enabled: bool) -> Result<ContainerData<'a>> {
+pub(crate) fn parse<'a>(
+    input: &'a DeriveInput,
+    derive_name: &str,
+    serde_enabled: bool,
+) -> Result<ContainerData<'a>> {
     match &input.data {
         Data::Struct(data) => Ok(ContainerData::Struct(parse_fields(
             &data.fields,
@@ -32,9 +36,15 @@ pub(crate) fn parse<'a>(input: &'a DeriveInput, derive_name: &str, serde_enabled
                 .iter()
                 .enumerate()
                 .map(|(index, variant)| {
-                    let serde_attributes = SerdeVariantAttributes::parse(variant, &input.ident, serde_enabled)?;
+                    let serde_attributes =
+                        SerdeVariantAttributes::parse(variant, &input.ident, serde_enabled)?;
                     let fields = parse_fields(&variant.fields, &input.ident, serde_enabled)?;
-                    Ok(VariantData::new(variant, index as u32, fields, serde_attributes))
+                    Ok(VariantData::new(
+                        variant,
+                        index as u32,
+                        fields,
+                        serde_attributes,
+                    ))
                 })
                 .collect::<Result<Vec<_>>>()?;
             Ok(ContainerData::Enum(variants))
@@ -46,7 +56,11 @@ pub(crate) fn parse<'a>(input: &'a DeriveInput, derive_name: &str, serde_enabled
     }
 }
 
-fn parse_fields<'a>(fields: &'a Fields, type_name: &Ident, serde_enabled: bool) -> Result<FieldsData<'a>> {
+fn parse_fields<'a>(
+    fields: &'a Fields,
+    type_name: &Ident,
+    serde_enabled: bool,
+) -> Result<FieldsData<'a>> {
     match fields {
         Fields::Named(fields) => Ok(FieldsData::Named(named_fields::parse(
             fields,

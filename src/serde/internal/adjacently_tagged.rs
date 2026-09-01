@@ -55,9 +55,16 @@ pub(in crate::serde) fn adjacent_variant_arm(
     let enum_name = container_attributes.name();
     let arm = match variant.fields() {
         FieldsData::Named(fields) => {
-            let (pattern, setups, _conditions, names, carriers) =
-                enum_named_parts(type_name, rust_name, fields, runtime, container_attributes, variant);
-            let (proxy_definition, proxy_value) = named_content_proxy(rust_name, serde, &names, &carriers);
+            let (pattern, setups, _conditions, names, carriers) = enum_named_parts(
+                type_name,
+                rust_name,
+                fields,
+                runtime,
+                container_attributes,
+                variant,
+            );
+            let (proxy_definition, proxy_value) =
+                named_content_proxy(rust_name, serde, &names, &carriers);
             quote! {
                 Self::#rust_name #pattern => {
                     #(#setups)*
