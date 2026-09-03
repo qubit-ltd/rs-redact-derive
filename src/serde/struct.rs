@@ -48,23 +48,13 @@ pub(super) fn struct_body(
 ) -> TokenStream {
     match fields {
         FieldsData::Named(fields) if container_attributes.transparent() => {
-            transparent_named_struct_body(
-                type_name,
-                &fields[0],
-                runtime,
-                serde,
-                container_attributes,
-            )
+            transparent_named_struct_body(type_name, &fields[0], runtime, serde, container_attributes)
         }
-        FieldsData::Named(fields) => {
-            named_struct_body(type_name, fields, runtime, serde, container_attributes)
-        }
+        FieldsData::Named(fields) => named_struct_body(type_name, fields, runtime, serde, container_attributes),
         FieldsData::Unnamed(fields) if fields.len() == 1 => {
             newtype_struct_body(type_name, &fields[0], runtime, serde, container_attributes)
         }
-        FieldsData::Unnamed(fields) => {
-            tuple_struct_body(type_name, fields, runtime, serde, container_attributes)
-        }
+        FieldsData::Unnamed(fields) => tuple_struct_body(type_name, fields, runtime, serde, container_attributes),
         FieldsData::Unit => {
             let serialized_name = container_attributes.name();
             quote! {
@@ -111,8 +101,7 @@ fn transparent_named_struct_body(
             key_raw,
         },
     );
-    let condition =
-        serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
+    let condition = serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
     quote! {
         if #condition {
             let __qubit_redact_serialized_0 = #value;
@@ -159,10 +148,10 @@ fn named_struct_body(
         let field = parsed.field();
         let identifier = parsed.identifier();
         let raw_name = raw_identifier(identifier);
-        let serialized_name = parsed.serde_attributes().rename().map_or_else(
-            || container_attributes.rename_struct_field(&raw_name),
-            str::to_owned,
-        );
+        let serialized_name = parsed
+            .serde_attributes()
+            .rename()
+            .map_or_else(|| container_attributes.rename_struct_field(&raw_name), str::to_owned);
         let raw = quote_spanned!(field.span()=> &self.#identifier);
         let key_raw = match parsed.attributes().mode() {
             FieldMode::KeyedBy(key) => Some(quote_spanned!(field.span()=> &self.#key)),
@@ -182,8 +171,7 @@ fn named_struct_body(
                 key_raw,
             },
         );
-        let condition =
-            serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
+        let condition = serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
         setups.push(quote_spanned! {field.span()=>
             let #carrier = if #condition {
                 ::core::option::Option::Some(#value)
@@ -198,8 +186,11 @@ fn named_struct_body(
 
     let count_conditions = &conditions;
     let serialized_name = container_attributes.name();
-    let calls = conditions.iter().zip(&serialized_names).zip(&carriers).map(
-        |((_condition, field_name), carrier)| {
+    let calls = conditions
+        .iter()
+        .zip(&serialized_names)
+        .zip(&carriers)
+        .map(|((_condition, field_name), carrier)| {
             quote! {
                 if let ::core::option::Option::Some(carrier) = #carrier.as_ref() {
                     #serde::ser::SerializeStruct::serialize_field(
@@ -209,8 +200,7 @@ fn named_struct_body(
                     )?;
                 }
             }
-        },
-    );
+        });
     quote! {
         #(#setups)*
         let mut field_count = 0usize;
@@ -271,8 +261,7 @@ fn newtype_struct_body(
             key_raw: None,
         },
     );
-    let condition =
-        serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
+    let condition = serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
     quote! {
         if #condition {
             let __qubit_redact_serialized_0 = #value;
@@ -331,8 +320,7 @@ fn tuple_struct_body(
                 key_raw: None,
             },
         );
-        let condition =
-            serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
+        let condition = serialization_condition(parsed.serde_attributes(), parsed.attributes().mode(), raw);
         setups.push(quote_spanned! {field.span()=>
             let #carrier = if #condition {
                 ::core::option::Option::Some(#value)
@@ -345,19 +333,16 @@ fn tuple_struct_body(
     }
     let count_conditions = &conditions;
     let serialized_name = container_attributes.name();
-    let calls = conditions
-        .iter()
-        .zip(&carriers)
-        .map(|(_condition, carrier)| {
-            quote! {
-                if let ::core::option::Option::Some(carrier) = #carrier.as_ref() {
-                    #serde::ser::SerializeTupleStruct::serialize_field(
-                        &mut state,
-                        carrier,
-                    )?;
-                }
+    let calls = conditions.iter().zip(&carriers).map(|(_condition, carrier)| {
+        quote! {
+            if let ::core::option::Option::Some(carrier) = #carrier.as_ref() {
+                #serde::ser::SerializeTupleStruct::serialize_field(
+                    &mut state,
+                    carrier,
+                )?;
             }
-        });
+        }
+    });
     quote! {
         #(#setups)*
         let mut field_count = 0usize;

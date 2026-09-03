@@ -75,15 +75,8 @@ fn expand_with_container_attributes(
         .serde_enabled()
         .then(|| resolve_serde_path(input))
         .transpose()?;
-    let serde_container_attributes =
-        SerdeContainerAttributes::parse(input, container_attributes.serde_enabled())?;
-    let serde_impl = serde::expand(
-        input,
-        runtime,
-        serde.as_ref(),
-        &serde_container_attributes,
-        &model,
-    )?;
+    let serde_container_attributes = SerdeContainerAttributes::parse(input, container_attributes.serde_enabled())?;
+    let serde_impl = serde::expand(input, runtime, serde.as_ref(), &serde_container_attributes, &model)?;
     let mut redaction_generics = input.generics.clone();
     assertions::add_redact_bounds(&mut redaction_generics, &model, runtime);
     let write_body = match &model {
@@ -146,7 +139,9 @@ fn writer_transparent_struct_body(fields: &FieldsData<'_>, runtime: &Path) -> To
                 runtime,
             )
         }
-        FieldsData::Unit => unreachable!("transparent unit structs are rejected"),
+        FieldsData::Unit => {
+            unreachable!("transparent unit structs are rejected")
+        }
     };
     quote! {
         writer.transparent(|__fields| {
@@ -200,7 +195,9 @@ fn writer_struct_body(type_name: &Ident, fields: &FieldsData<'_>, runtime: &Path
                 });
             }
         }
-        FieldsData::Unit => quote! { writer.record(stringify!(#type_name), |_| {}); },
+        FieldsData::Unit => {
+            quote! { writer.record(stringify!(#type_name), |_| {}); }
+        }
     }
 }
 
@@ -299,7 +296,9 @@ fn writer_field_call(
     runtime: &Path,
 ) -> Option<TokenStream> {
     let call = match mode {
-        FieldMode::Unmarked => quote! { __fields.unmarked(#field_name, || #value); },
+        FieldMode::Unmarked => {
+            quote! { __fields.unmarked(#field_name, || #value); }
+        }
         FieldMode::Level(level) => {
             let level = level.runtime_tokens(runtime);
             quote! { __fields.sensitive_value(#level, #field_name, #value); }
@@ -312,10 +311,7 @@ fn writer_field_call(
             key,
             value: value_level,
         } => {
-            let key = key
-                .as_ref()
-                .expect("map key level is required")
-                .runtime_tokens(runtime);
+            let key = key.as_ref().expect("map key level is required").runtime_tokens(runtime);
             let value_level = value_level
                 .as_ref()
                 .map(|level| {
@@ -329,7 +325,9 @@ fn writer_field_call(
             let key = key_access.expect("keyed_by is available only for named fields");
             quote! { __fields.keyed_value(#field_name, #key, #value); }
         }
-        FieldMode::Json => quote! { __fields.json_text_value(#field_name, #value); },
+        FieldMode::Json => {
+            quote! { __fields.json_text_value(#field_name, #value); }
+        }
         FieldMode::Skip => quote! { __fields.skipped(#field_name, || #value); },
     };
     Some(quote_spanned! {field.span()=> #call })

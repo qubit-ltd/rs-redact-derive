@@ -57,9 +57,13 @@ pub(crate) fn expand(
                     formatter.write_str(output.text().as_str())?;
                     formatter.write_str(")")
                 },
-                Fields::Unit => unreachable!("transparent unit structs are rejected"),
+                Fields::Unit => {
+                    unreachable!("transparent unit structs are rejected")
+                }
             },
-            Data::Enum(_) | Data::Union(_) => unreachable!("transparent requires a struct"),
+            Data::Enum(_) | Data::Union(_) => {
+                unreachable!("transparent requires a struct")
+            }
         }
     } else {
         quote!(formatter.write_str(output.text().as_str()))
