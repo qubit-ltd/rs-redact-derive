@@ -65,7 +65,9 @@ assert!(!output.text().as_str().contains("never-render"));
 `#[redact(plain)]`、`#[redact(no_mut)]` 和 `#[redact(require_explicit)]` 不属于当前契约。
 宏支持具名、tuple、unit struct，以及 enum 的这些 variant 形态。容器属性
 `#[redact(debug)]`、`#[redact(display)]` 和 `#[redact(serde)]` 都必须显式启用；Serde
-支持还需要运行时 `serde` feature 和直接声明的 `serde` 依赖。
+支持还需要运行时 `serde` feature 和直接声明的 `serde` 依赖。生成的实现会有意在每次格式化
+或序列化调用开始时读取当时的 `Redactor::application_default()` 快照，而不是在值创建时固定
+策略。因此，替换进程级默认值会影响之后的调用。
 
 `keyed_by` 仅可用于具名字段。被引用的兄弟 key 必须实现 `AsRef<str>`，value 使用与
 `level` 相同的递归叶子 capability。standard policy 会放行未知 key；如果未知 payload
@@ -88,6 +90,10 @@ pub trait Redact {
 策略启用时，生成的 `Debug` 和 `Display` 实现会直接写出运行时产生的保密安全文本，即使
 资源限制导致诊断信息不完整，也不强制格式化调用方处理它无法采取行动的完成原因。确实依赖
 完整性的程序逻辑应直接调用运行时 API 并检查摘要。
+
+安装 disabled 应用默认值是有意保留的进程级调试逃生口，会让之后生成的 `Debug`、`Display`
+和 `Serialize` 调用恢复源值。框架不替调用方授权；环境控制、启用时机及保密后果由调用方
+负责。显式创建的运行时 redactor、composer 和 batch 继续持有创建时的策略快照。
 
 需要借用且保持不变的解析 JSON，可使用运行时
 `Redactor::redact_json_value(&serde_json::Value)` 或

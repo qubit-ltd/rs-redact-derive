@@ -47,6 +47,15 @@ mod tests;
 /// callers that require completeness must use the runtime API and inspect its
 /// summary instead.
 ///
+/// Generated `Debug`, `Display`, and `Serialize` implementations intentionally
+/// call `qubit_redact::Redactor::application_default()` at the start of every
+/// formatting or serialization operation. They do not capture a policy when
+/// the value is created. Replacing the process-wide application default affects
+/// subsequent generated calls, and installing a disabled default deliberately
+/// restores source values. Callers own authorization for that global debugging
+/// escape hatch. Explicit runtime redactors, composers, and batches retain the
+/// policy snapshot with which they were created.
+///
 /// # Examples
 ///
 /// ```

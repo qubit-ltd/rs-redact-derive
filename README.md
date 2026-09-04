@@ -70,7 +70,11 @@ runtime's strict policy and inspection do not override this derive decision.
 not part of the current contract. The macro supports named, tuple, and unit
 structs and enum variants. `#[redact(debug)]`, `#[redact(display)]`, and
 `#[redact(serde)]` are opt-in container attributes; Serde support requires the
-runtime `serde` feature and a direct `serde` dependency.
+runtime `serde` feature and a direct `serde` dependency. Their generated
+implementations intentionally obtain the current
+`Redactor::application_default()` snapshot at the start of every formatting or
+serialization call; they do not capture policy when the value is created.
+Replacing the process-wide default therefore affects subsequent calls.
 
 `keyed_by` is available only on named fields. The referenced sibling key must
 implement `AsRef<str>`, while the value uses the same recursive leaf capability
@@ -100,6 +104,13 @@ text produced by the enabled runtime policy even when a resource limit makes
 the diagnostic incomplete. They do not force formatting callers to interpret a
 completion reason that they cannot act on. Program logic that needs completeness
 must call the runtime API and inspect its summary explicitly.
+
+Installing a disabled application default is an intentional process-wide
+debugging escape hatch and makes subsequent generated `Debug`, `Display`, and
+`Serialize` calls restore source values. The framework does not authorize that
+choice; callers own its environment controls, timing, and confidentiality
+consequences. Explicit runtime redactors, composers, and batches keep the policy
+snapshot with which they were created.
 
 For parsed JSON that must remain borrowed and unchanged, use the runtime API
 `Redactor::redact_json_value(&serde_json::Value)` or
