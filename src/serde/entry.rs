@@ -40,17 +40,8 @@ pub(crate) fn expand(
     let adapter_helpers = serialization_adapter_helpers(name, &input.generics, model, serde);
     let (impl_generics, type_generics, where_clause) = serialization_generics.split_for_impl();
     let body = match model {
-        ContainerData::Struct(fields) => {
-            struct_body(name, fields, runtime, serde, container_attributes)
-        }
-        ContainerData::Enum(variants) => enum_body(
-            name,
-            variants,
-            runtime,
-            serde,
-            container_attributes,
-            &serializer,
-        )?,
+        ContainerData::Struct(fields) => struct_body(name, fields, runtime, serde, container_attributes),
+        ContainerData::Enum(variants) => enum_body(name, variants, runtime, serde, container_attributes, &serializer)?,
     };
 
     Ok(quote! {
@@ -107,14 +98,10 @@ fn serialization_adapter_helpers(
     serde: &Path,
 ) -> Vec<TokenStream> {
     match model {
-        ContainerData::Struct(fields) => {
-            fields_adapter_helpers(type_name, generics, fields, None, serde)
-        }
+        ContainerData::Struct(fields) => fields_adapter_helpers(type_name, generics, fields, None, serde),
         ContainerData::Enum(variants) => variants
             .iter()
-            .flat_map(|variant| {
-                fields_adapter_helpers(type_name, generics, variant.fields(), Some(variant), serde)
-            })
+            .flat_map(|variant| fields_adapter_helpers(type_name, generics, variant.fields(), Some(variant), serde))
             .collect(),
     }
 }
@@ -185,10 +172,9 @@ fn serialization_adapter_helper(
     let field_type = &field.ty;
     let carrier_lifetime = assertions::fresh_lifetime(generics);
     let mut carrier_generics = assertions::generics_for_field(generics, field_type);
-    carrier_generics.params.insert(
-        0,
-        GenericParam::Lifetime(LifetimeParam::new(carrier_lifetime.clone())),
-    );
+    carrier_generics
+        .params
+        .insert(0, GenericParam::Lifetime(LifetimeParam::new(carrier_lifetime.clone())));
     let serializer = assertions::fresh_identifier(&carrier_generics, "__QubitRedactSerializer");
     let carrier_params = &carrier_generics.params;
     let (impl_generics, type_generics, where_clause) = carrier_generics.split_for_impl();
