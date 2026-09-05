@@ -5,7 +5,7 @@ error[E0277]: the trait bound `BTreeMap<u32, String>: RedactMapValue` is not sat
   |          ^^^^^^ the trait `RedactMapValue` is not implemented for `BTreeMap<u32, String>`
   |
 help: the following other types implement trait `RedactMapValue`
- --> $QUBIT_REDACT/src/domain/redact_map_value.rs
+ --> $CARGO/qubit-redact-$VERSION/src/domain/redact_map_value.rs
   |
   |         impl<V: super::RedactLevelValue> RedactMapValue for BTreeMap<$key, V> {
   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `BTreeMap<String, V>`
@@ -23,7 +23,7 @@ help: the following other types implement trait `RedactMapValue`
   | borrowed_map_key!(Cow<'a, str>);
   | ------------------------------- in this macro invocation
 note: required by a bound in `RedactionFields::<'writer, 'session>::map_value`
- --> $QUBIT_REDACT/src/domain/redaction_fields.rs
+ --> $CARGO/qubit-redact-$VERSION/src/domain/redaction_fields.rs
   |
   |     pub fn map_value<T>(&mut self, name: &str, value: &T) -> &mut Self
   |            --------- required by a bound in this associated function

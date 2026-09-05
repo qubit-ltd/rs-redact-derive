@@ -5,7 +5,7 @@ error[E0277]: the trait bound `u32: AsRef<str>` is not satisfied
   |          ^^^^^^ the trait `AsRef<str>` is not implemented for `u32`
   |
 note: required by a bound in `RedactionFields::<'writer, 'session>::keyed_value`
- --> $QUBIT_REDACT/src/domain/redaction_fields.rs
+ --> $CARGO/qubit-redact-$VERSION/src/domain/redaction_fields.rs
   |
   |     pub fn keyed_value<K, T>(&mut self, name: &str, key: &K, value: &T) -> &mut Self
   |            ----------- required by a bound in this associated function

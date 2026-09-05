@@ -20,7 +20,7 @@ help: the trait `RedactLevelValue` is not implemented for `Child`
             (A, B, C, D, E, F, G, H)
           and $N others
 note: required by a bound in `RedactionFields::<'writer, 'session>::sensitive_value`
- --> $QUBIT_REDACT/src/domain/redaction_fields.rs
+ --> $CARGO/qubit-redact-$VERSION/src/domain/redaction_fields.rs
   |
   |     pub fn sensitive_value<T>(&mut self, level: Sensitivity, name: &str, value: &T) -> &mut Self
   |            --------------- required by a bound in this associated function
