@@ -9,7 +9,6 @@ publish = false
 [dependencies]
 qubit-redact = {
     version = "0.5",
-    path = "../../../../../rs-redact",
     features = ["serde"],
 }
 qubit-redact-derive = { path = "../../../.." }

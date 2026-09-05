@@ -11,6 +11,5 @@ qubit-redact-derive = { path = "../../../.." }
 redaction-runtime = {
     package = "qubit-redact",
     version = "0.5",
-    path = "../../../../../rs-redact",
     default-features = false,
 }
