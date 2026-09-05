@@ -1,5 +1,10 @@
 # qubit-redact-derive
 
+> This repository has been archived. Starting with `0.6.0`, the
+> `qubit-redact-derive` crate is maintained as the `derive/` workspace member
+> in the [`rs-redact`](https://github.com/qubit-ltd/rs-redact) repository. Use
+> the runtime crate's `derive` feature and follow the documentation there.
+
 [![Rust CI](https://github.com/qubit-ltd/rs-redact-derive/actions/workflows/ci.yml/badge.svg)](https://github.com/qubit-ltd/rs-redact-derive/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https://qubit-ltd.github.io/rs-redact-derive/coverage-badge.json)](https://qubit-ltd.github.io/rs-redact-derive/coverage/)
 [![Crates.io](https://img.shields.io/crates/v/qubit-redact-derive.svg?color=blue)](https://crates.io/crates/qubit-redact-derive)
@@ -16,8 +21,7 @@ The derive never mutates the source value and exposes no mutable redaction API.
 
 ```toml
 [dependencies]
-qubit-redact = { version = "0.5", features = ["derive"] }
-qubit-redact-derive = "0.5"
+qubit-redact = { version = "0.6", features = ["derive"] }
 ```
 
 ## Quick Start

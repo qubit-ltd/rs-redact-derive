@@ -1,5 +1,9 @@
 # qubit-redact-derive
 
+> 本仓库已归档。自 `0.6.0` 起，`qubit-redact-derive` crate 作为
+> [`rs-redact`](https://github.com/qubit-ltd/rs-redact) 仓库中的 `derive/`
+> workspace 成员维护。请使用运行时 crate 的 `derive` feature，并以新仓库中的文档为准。
+
 [![Rust CI](https://github.com/qubit-ltd/rs-redact-derive/actions/workflows/ci.yml/badge.svg)](https://github.com/qubit-ltd/rs-redact-derive/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https://qubit-ltd.github.io/rs-redact-derive/coverage-badge.json)](https://qubit-ltd.github.io/rs-redact-derive/coverage/)
 [![Crates.io](https://img.shields.io/crates/v/qubit-redact-derive.svg?color=blue)](https://crates.io/crates/qubit-redact-derive)
@@ -15,8 +19,7 @@
 
 ```toml
 [dependencies]
-qubit-redact = { version = "0.5", features = ["derive"] }
-qubit-redact-derive = "0.5"
+qubit-redact = { version = "0.6", features = ["derive"] }
 ```
 
 ## 快速开始
