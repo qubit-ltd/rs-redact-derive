@@ -81,7 +81,7 @@ quote = "1"
 syn = "2"
 
 [dev-dependencies]
-qubit-redact = { path = "../rs-redact", default-features = false, features = ["serde", "json"] }
+qubit-redact = { version = "0.5", default-features = false, features = ["serde", "json"] }
 qubit-budget = "0.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
